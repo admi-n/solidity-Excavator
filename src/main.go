@@ -5,6 +5,7 @@ import (
 )
 
 func main() {
+	cmd.Print()
 	if err := cmd.Run(); err != nil {
 		cmd.PrintFatal(err)
 	}

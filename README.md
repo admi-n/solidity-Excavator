@@ -50,6 +50,15 @@ src/
 │   │   └── parser/                        # AI 输出解析与结构化模块
 │   │       ├── parser.go                  # 实现 AI 输出到结构体的解析逻辑（自然语言 → JSON/结构体）
 │   │       └── schema.go                  # 定义统一的漏洞扫描结果结构体（ScanResult、IssueDetail 等）
+│   ├── reporter/
+│   │   ├── reporter.go         # Reporter 管理器与公共接口
+│   │   ├── generator.go        # 高级生成器：把 ScanResult 组装成 ReportData
+│   │   ├── renderers/
+│   │   │   ├── markdown.go     # 生成 Markdown 报告
+│   │   │   ├── html.go         # 生成 HTML 报告
+│   │   │   ├── json.go         # 直接输出结构化 JSON
+│   │   │   └── pdf.go          # 可选：把 HTML -> PDF（依赖外部工具）
+│   │   └──  storage.go          # 将报告写入文件系统/对象存储/DB 的逻辑
 │   │
 │   ├── core/                              # ⚡ 扫描核心逻辑：不同模式的引擎实现
 │   │   ├── mode1.go                       # mode1_targeted 精确扫描逻辑（复现类漏洞）

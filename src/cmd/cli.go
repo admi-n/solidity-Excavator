@@ -4,6 +4,8 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"github.com/admi-n/solidity-Excavator/src/internal"
+	"github.com/admi-n/solidity-Excavator/src/internal/handler"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -11,7 +13,10 @@ import (
 	"time"
 )
 
-// CLIConfig 保存解析好的 CLI 选项以及供扫描器使用的规范化字段。
+// Reporter 先不写
+
+// CLIConfig 保存解析好的 CLI 选项以及供扫描器使用的规范化字
+// 段。
 type CLIConfig struct {
 	AIProvider   string // 例如 chatgpt5
 	Mode         string // mode1 | mode2 | mode3
@@ -23,6 +28,11 @@ type CLIConfig struct {
 	Concurrency  int
 	Verbose      bool
 	Timeout      time.Duration
+
+	// Reporter 相关配置
+	//ReportEnabled bool     // 是否生成报告
+	//ReportFormats []string // 支持的格式：md,json,html,pdf
+	//ReportOut     string   // 报告输出目录或前缀
 }
 
 // BlockRange 简单的起止区块范围结构
@@ -96,6 +106,20 @@ func (c *CLIConfig) Validate() error {
 	if c.Concurrency <= 0 {
 		c.Concurrency = 4
 	}
+
+	// Validate report formats if reporting enabled
+	//if c.ReportEnabled {
+	//	if c.ReportOut == "" {
+	//		return errors.New("-report-out is required when -report is enabled")
+	//	}
+	//	allowed := map[string]bool{"md": true, "json": true, "html": true, "pdf": true}
+	//	for _, f := range c.ReportFormats {
+	//		if !allowed[strings.ToLower(f)] {
+	//			return fmt.Errorf("unsupported report format: %s", f)
+	//		}
+	//	}
+	//}
+
 	return nil
 }
 
@@ -115,7 +139,7 @@ func ParseFlags() (*CLIConfig, error) {
 	}
 
 	ai := fs.String("ai", "", "AI provider to use (e.g. chatgpt5)")
-	mode := fs.String("m", "", "Mode to run: mode1 | mode2 | mode3")
+	mode := fs.String("m", "", "Mode to run: mode1(targeted) | mode2(fuzzy) | mode3(general)")
 	strategy := fs.String("s", "all", "Strategy/prompt name in strategy/prompts/<mode>/ (or 'all')")
 	target := fs.String("t", "db", "Target source: 'db' or 'file' (default db)")
 	blockRange := fs.String("t-block", "", "Block range for scanning (format start-end, e.g. 1-220234)")
@@ -124,6 +148,9 @@ func ParseFlags() (*CLIConfig, error) {
 	concurrency := fs.Int("concurrency", 4, "Worker concurrency")
 	verbose := fs.Bool("v", false, "Verbose output")
 	timeout := fs.Duration("timeout", 30*time.Second, "Per-AI request timeout")
+	//report := fs.Bool("report", false, "Whether to generate report files after scan (default false)")
+	//reportFormats := fs.String("report-formats", "md,json", "Comma-separated output formats: md,json,html,pdf")
+	//reportOut := fs.String("report-out", "./reports", "Output directory or storage prefix for reports")
 
 	if err := fs.Parse(os.Args[1:]); err != nil {
 		return nil, err
@@ -139,7 +166,18 @@ func ParseFlags() (*CLIConfig, error) {
 		Concurrency:  *concurrency,
 		Verbose:      *verbose,
 		Timeout:      *timeout,
+		//ReportEnabled: *report,
+		//ReportOut:     strings.TrimSpace(*reportOut),
 	}
+
+	// parse report formats
+	//if strings.TrimSpace(*reportFormats) != "" {
+	//	parts := strings.Split(*reportFormats, ",")
+	//	for i := range parts {
+	//		parts[i] = strings.ToLower(strings.TrimSpace(parts[i]))
+	//	}
+	//	cfg.ReportFormats = parts
+	//}
 
 	if strings.TrimSpace(*blockRange) != "" {
 		br, err := parseBlockRange(*blockRange)
@@ -163,6 +201,17 @@ func ParseFlags() (*CLIConfig, error) {
 		}
 	}
 
+	// normalize report-out to absolute path if local
+	//cfg.ReportEnabled = *report
+	//if cfg.ReportEnabled {
+	//	cfg.ReportOut = strings.TrimSpace(*reportOut)
+	//	parts := strings.Split(*reportFormats, ",")
+	//	for i := range parts {
+	//		parts[i] = strings.ToLower(strings.TrimSpace(parts[i]))
+	//	}
+	//	cfg.ReportFormats = parts
+	//}
+
 	if err := cfg.Validate(); err != nil {
 		return nil, err
 	}
@@ -185,10 +234,33 @@ func Run() error {
 		fmt.Printf("使用配置运行 Excavator: %+v\n", cfg)
 	}
 
+	// 将 CLIConfig 映射到 internal.ScanConfig
+	internalCfg := internal.ScanConfig{
+		AIProvider:   cfg.AIProvider,
+		Mode:         cfg.Mode,
+		Strategy:     cfg.Strategy,
+		TargetSource: cfg.TargetSource,
+		TargetFile:   cfg.TargetFile,
+		Chain:        cfg.Chain,
+		Concurrency:  cfg.Concurrency,
+		Verbose:      cfg.Verbose,
+		Timeout:      cfg.Timeout,
+	}
+	if cfg.BlockRange != nil {
+		internalCfg.BlockRange = &internal.BlockRange{
+			Start: cfg.BlockRange.Start,
+			End:   cfg.BlockRange.End,
+		}
+	}
+
 	// TODO: 与内部/核心处理器集成。下面为示例分派。
 	switch cfg.Mode {
 	case "mode1":
-		fmt.Println("分派到 mode1（定向）处理器 — 请实现调用 internal/handler")
+		results, err := handler.RunMode1(internalCfg)
+		if err != nil {
+			return fmt.Errorf("Mode1 扫描失败: %w", err)
+		}
+		fmt.Printf("Mode1 扫描完成，共找到 %d 个漏洞条目\n", len(results))
 	case "mode2":
 		fmt.Println("分派到 mode2（模糊）处理器 — 请实现调用 internal/handler")
 	case "mode3":
@@ -197,6 +269,16 @@ func Run() error {
 		return errors.New("unsupported mode")
 	}
 
+	// Reporter 集成点（占位）
+	//if cfg.ReportEnabled {
+	//	// 目前这里仅为占位提示 —— 实际应调用 internal/reporter 生成并保存报告。
+	//	// 示例伪代码：
+	//	// reportManager := reporter.New(cfg.ReportOut)
+	//	// meta, err := reportManager.Generate(ctx, scanResult, cfg.ReportFormats)
+	//	// if err != nil { log... }
+	//	// if cfg.ReportNotify { reportManager.Notify(meta) }
+	//	fmt.Printf("报告已启用 → 格式: %v, 输出: %s\n", cfg.ReportFormats, cfg.ReportOut)
+	//}
 	return nil
 }
 
@@ -205,6 +287,7 @@ func PrintFatal(err error) {
 	if err == nil {
 		return
 	}
+
 	fmt.Fprintln(os.Stderr, "错误:", err)
 	os.Exit(1)
 }
