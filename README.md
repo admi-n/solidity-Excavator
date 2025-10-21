@@ -15,12 +15,17 @@
 
 
 go run main.go -ai chatgpt5 -m mode1 -s hourglass-vul -t db -t-block 1-1000 -c eth
+
 使用chagpt5模型通过模式1去扫描区块1-1000部署的合约关于hourglass-vul的漏洞。
 
 go run main.go -ai chatgpt5 -m mode1 -s hourglass-vul t file -t-file 1.txt -t-block 1-1000 -c eth
+
 使用chagpt5模型通过模式1去扫描文本中的合约关于hourglass-vul的漏洞的, 查找有无类似。
+
 1.txt的格式：
+
 0x
+
 0x
 
 通过1.txt中的合约去匹配数据库中的合约源码,或者通过api下载源码到数据库里面。去扫描(直接通过数据库匹配吧,这样不需要管很多东西了,定期通过api下载最新的合约和代码就行了)
@@ -41,6 +46,7 @@ AI暂时先试用API,因为本地llm效果不太好,不过不排除针对性训�
 
 ### 模式
 采用3种模式
+
 1:特定类别扫描 (mode1_targeted)： 根据历史漏洞复现出来,然后给他说漏洞的关键部分,比如复现了town,多层推荐人返佣机制漏洞，就提前写好提示词和参考漏洞代码。然后后面直接给他地址和合约代码去扫
 
 2:模糊类别扫描 (mode2_fuzzy)：    没有复现出来,给他一个大概的详情,让他去扫描有没有类似的漏洞。  (和1有点差不多)  偏向模糊一点
