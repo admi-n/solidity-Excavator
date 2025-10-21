@@ -1,9 +1,23 @@
 # solidity-Excavator
 
 
-数据集的格式应该要哪一种,是丢数据库吗还是yaml。eth_0x0000.yaml
 
-数据集用数据库吧,方便索引。
+
+
+数据集用数据库,方便索引。
+
+go run main.go -ai chatgpt5 -m mode1 -s hourglass-vul -t db -t-block 1-1000 -c eth
+使用chagpt5模型通过模式1去扫描区块1-1000部署的合约关于hourglass-vul的漏洞。
+
+go run main.go -ai chatgpt5 -m mode1 -s hourglass-vul t file -t-file 1.txt -t-block 1-1000 -c eth
+使用chagpt5模型通过模式1去扫描文本中的合约关于hourglass-vul的漏洞的, 查找有无类似。
+1.txt的格式：
+0x
+0x
+
+通过1.txt中的合约去匹配数据库中的合约源码,或者通过api下载源码到数据库里面。去扫描(直接通过数据库匹配吧,这样不需要管很多东西了,定期通过api下载最新的合约和代码就行了)
+
+
 
 
 格式包含信息：  创建时间/区块   合约地址   合约代码  合约余额(这个不好判断,因为有的是eth有的是有其他币的)  交互数量  快照最后一次交易截止日期
