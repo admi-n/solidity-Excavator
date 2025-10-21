@@ -99,6 +99,8 @@ src/
 │   │   │   ├── json.go         # 直接输出结构化 JSON
 │   │   │   └── pdf.go          # 可选：把 HTML -> PDF（依赖外部工具）
 │   │   └──  storage.go          # 将报告写入文件系统/对象存储/DB 的逻辑
+│   │   
+│   ├── decompiler               #反编译：有点难先不管。。。。
 │   │
 │   ├── core/                              # ⚡ 扫描核心逻辑：不同模式的引擎实现
 │   │   ├── mode1.go                       # mode1_targeted 精确扫描逻辑（复现类漏洞）
