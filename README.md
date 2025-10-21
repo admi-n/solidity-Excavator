@@ -1,10 +1,18 @@
 # solidity-Excavator
 
 
+一个工具： 可以自定义编写规则扫描特定合约,包括未开源合约
+
+
+
 
 
 
 数据集用数据库,方便索引。
+
+数据集格式： 格式包含信息：  合约地址 合约代码  合约余额  创建时间  创建区块  最后一次交互时间  是否开源(0/1)
+
+
 
 go run main.go -ai chatgpt5 -m mode1 -s hourglass-vul -t db -t-block 1-1000 -c eth
 使用chagpt5模型通过模式1去扫描区块1-1000部署的合约关于hourglass-vul的漏洞。
@@ -20,7 +28,7 @@ go run main.go -ai chatgpt5 -m mode1 -s hourglass-vul t file -t-file 1.txt -t-bl
 
 
 
-格式包含信息：  创建时间/区块   合约地址   合约代码  合约余额(这个不好判断,因为有的是eth有的是有其他币的)  交互数量  快照最后一次交易截止日期
+
 
 
 
