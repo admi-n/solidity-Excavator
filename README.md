@@ -22,9 +22,16 @@ graph TD
 
 数据集格式： 
 
-格式包含信息：  合约地址 合约代码  合约余额  是否开源(0/1)  创建时间  创建区块  最后一次交互时间  
+格式包含信息：  合约地址     合约代码   合约余额     是否开源(0/1)      创建时间       创建区块            最后一次交互时间   是否已经反编译      反编译伪代码
+              Address    Contract   Balance    isOpenSource      Createtime   CreateBlock        txlast          isdecompiled       dedcode
 
 
+
+
+go run main.go -d last  下载目前区块到最新区块
+go run main.go -d -d-range 10000000-10005000  下载1000到2000区块
+
+//暂时先不加合约hash计算,后续反编译的时候遇到hash一样的就不需要反编译了
 
 go run main.go -ai chatgpt5 -m mode1 -s hourglass-vul -t db -t-block 1-1000 -c eth
 
@@ -45,7 +52,8 @@ go run main.go -ai chatgpt5 -m mode1 -s hourglass-vul t file -t-file 1.txt -t-bl
 
 
 
-
+## 任务
+已经完成： cli   download 
 
 
 
@@ -78,7 +86,7 @@ src/
 │
 ├── data/                                  # 🧾 数据层：静态输入和基准数据集
 │   ├── benchmarks/                        # 性能与正确性基准数据（用于测试扫描准确率）
-│   └── source_contracts/                  # 待扫描合约源文件，可按项目/来源分子目录
+│   └── SWC/                               # SWC
 │
 ├── internal/                              # 🔍 核心逻辑层：扫描、AI、解析、处理的内部模块
 │   ├── ai/                                # 🤖 AI 模块：统一 AI 客户端和解析逻辑

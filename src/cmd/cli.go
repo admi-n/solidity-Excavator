@@ -1,22 +1,24 @@
 package cmd
 
 import (
+	"context"
 	"errors"
 	"flag"
 	"fmt"
-	"github.com/admi-n/solidity-Excavator/src/internal"
-	"github.com/admi-n/solidity-Excavator/src/internal/handler"
 	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/admi-n/solidity-Excavator/src/config"
+	"github.com/admi-n/solidity-Excavator/src/internal"
+	"github.com/admi-n/solidity-Excavator/src/internal/download"
 )
 
 // Reporter 先不写
 
-// CLIConfig 保存解析好的 CLI 选项以及供扫描器使用的规范化字
-// 段。
+// CLIConfig 保存解析好的 CLI 选项以及供扫描器使用的规范化字段。
 type CLIConfig struct {
 	AIProvider   string // 例如 chatgpt5
 	Mode         string // mode1 | mode2 | mode3
@@ -29,10 +31,9 @@ type CLIConfig struct {
 	Verbose      bool
 	Timeout      time.Duration
 
-	// Reporter 相关配置
-	//ReportEnabled bool     // 是否生成报告
-	//ReportFormats []string // 支持的格式：md,json,html,pdf
-	//ReportOut     string   // 报告输出目录或前缀
+	// 下载相关配置
+	Download      bool        // -d 启动下载流程
+	DownloadRange *BlockRange // -d-range 指定下载区块范围（格式 start-end），为空表示从上次继续下载
 }
 
 // BlockRange 简单的起止区块范围结构
@@ -85,6 +86,11 @@ func parseBlockRange(s string) (*BlockRange, error) {
 
 // Validate 检查 CLIConfig 的必需/一致性输入。
 func (c *CLIConfig) Validate() error {
+	// 如果是下载模式，仅需要下载相关配置
+	if c.Download {
+		return nil
+	}
+
 	if c.AIProvider == "" {
 		return errors.New("-ai is required (e.g. -ai chatgpt5)")
 	}
@@ -106,20 +112,6 @@ func (c *CLIConfig) Validate() error {
 	if c.Concurrency <= 0 {
 		c.Concurrency = 4
 	}
-
-	// Validate report formats if reporting enabled
-	//if c.ReportEnabled {
-	//	if c.ReportOut == "" {
-	//		return errors.New("-report-out is required when -report is enabled")
-	//	}
-	//	allowed := map[string]bool{"md": true, "json": true, "html": true, "pdf": true}
-	//	for _, f := range c.ReportFormats {
-	//		if !allowed[strings.ToLower(f)] {
-	//			return fmt.Errorf("unsupported report format: %s", f)
-	//		}
-	//	}
-	//}
-
 	return nil
 }
 
@@ -136,7 +128,13 @@ func ParseFlags() (*CLIConfig, error) {
 		fmt.Fprintln(w, "示例:")
 		fmt.Fprintln(w, "  excavator -ai chatgpt5 -m mode1 -s hourglass-vul -t file -t-file ./data/source_contracts/sample.yaml -c eth")
 		fmt.Fprintln(w, "  excavator -ai chatgpt5 -m mode1 -s all -t db -t-block 1-220234 -c eth")
+		fmt.Fprintln(w, "  excavator -d                    # 从上次继续下载")
+		fmt.Fprintln(w, "  excavator -d -d-range 1000-2000 # 下载指定区块范围")
 	}
+
+	// 新增下载相关 flags（不包含 rpc/dbdsn）
+	downloadFlag := fs.Bool("d", false, "启动区块/合约下载流程（从数据库记录的最后区块继续，或使用 -d-range 指定范围）")
+	drange := fs.String("d-range", "", "下载区块范围（format start-end），与 -d 一起使用时覆盖从上次继续的行为")
 
 	ai := fs.String("ai", "", "AI provider to use (e.g. chatgpt5)")
 	mode := fs.String("m", "", "Mode to run: mode1(targeted) | mode2(fuzzy) | mode3(general)")
@@ -148,9 +146,6 @@ func ParseFlags() (*CLIConfig, error) {
 	concurrency := fs.Int("concurrency", 4, "Worker concurrency")
 	verbose := fs.Bool("v", false, "Verbose output")
 	timeout := fs.Duration("timeout", 30*time.Second, "Per-AI request timeout")
-	//report := fs.Bool("report", false, "Whether to generate report files after scan (default false)")
-	//reportFormats := fs.String("report-formats", "md,json", "Comma-separated output formats: md,json,html,pdf")
-	//reportOut := fs.String("report-out", "./reports", "Output directory or storage prefix for reports")
 
 	if err := fs.Parse(os.Args[1:]); err != nil {
 		return nil, err
@@ -166,18 +161,17 @@ func ParseFlags() (*CLIConfig, error) {
 		Concurrency:  *concurrency,
 		Verbose:      *verbose,
 		Timeout:      *timeout,
-		//ReportEnabled: *report,
-		//ReportOut:     strings.TrimSpace(*reportOut),
+		Download:     *downloadFlag,
 	}
 
-	// parse report formats
-	//if strings.TrimSpace(*reportFormats) != "" {
-	//	parts := strings.Split(*reportFormats, ",")
-	//	for i := range parts {
-	//		parts[i] = strings.ToLower(strings.TrimSpace(parts[i]))
-	//	}
-	//	cfg.ReportFormats = parts
-	//}
+	// 解析下载区块范围（如果提供）
+	if strings.TrimSpace(*drange) != "" {
+		br, err := parseBlockRange(*drange)
+		if err != nil {
+			return nil, err
+		}
+		cfg.DownloadRange = br
+	}
 
 	if strings.TrimSpace(*blockRange) != "" {
 		br, err := parseBlockRange(*blockRange)
@@ -201,17 +195,6 @@ func ParseFlags() (*CLIConfig, error) {
 		}
 	}
 
-	// normalize report-out to absolute path if local
-	//cfg.ReportEnabled = *report
-	//if cfg.ReportEnabled {
-	//	cfg.ReportOut = strings.TrimSpace(*reportOut)
-	//	parts := strings.Split(*reportFormats, ",")
-	//	for i := range parts {
-	//		parts[i] = strings.ToLower(strings.TrimSpace(parts[i]))
-	//	}
-	//	cfg.ReportFormats = parts
-	//}
-
 	if err := cfg.Validate(); err != nil {
 		return nil, err
 	}
@@ -230,6 +213,57 @@ func Run() error {
 		return err
 	}
 
+	// 下载模式优先
+	if cfg.Download {
+		fmt.Println("🚀 启动合约下载器...")
+
+		// 初始化 MySQL 数据库连接（使用 config.InitDB，不需要传 DSN）
+		fmt.Println("📊 正在连接 MySQL 数据库...")
+		db, err := config.InitDB()
+		if err != nil {
+			return fmt.Errorf("初始化数据库失败: %w", err)
+		}
+		defer db.Close()
+		fmt.Println("✅ 数据库连接成功!")
+
+		// 创建下载器（会自动从 config.GetRPCURL() 读取 RPC URL）
+		fmt.Println("🔗 正在连接以太坊节点...")
+		dl, err := download.NewDownloader(db)
+		if err != nil {
+			return fmt.Errorf("创建下载器失败: %w", err)
+		}
+		defer dl.Close()
+
+		// 创建上下文（使用较长的超时时间用于下载）
+		ctx := context.Background()
+
+		fmt.Println("\n" + strings.Repeat("=", 50))
+		fmt.Println("开始同步合约数据...")
+		fmt.Println(strings.Repeat("=", 50) + "\n")
+
+		// 如果提供了下载范围，使用 DownloadBlockRange，否则使用 DownloadFromLast
+		if cfg.DownloadRange != nil {
+			start := cfg.DownloadRange.Start
+			end := cfg.DownloadRange.End
+			if end == ^uint64(0) {
+				return fmt.Errorf("下载范围的结束区块不能为空")
+			}
+			fmt.Printf("📥 下载指定区块范围: %d 到 %d\n", start, end)
+			if err := dl.DownloadBlockRange(ctx, start, end); err != nil {
+				return fmt.Errorf("下载失败: %w", err)
+			}
+		} else {
+			fmt.Println("📥 从上次下载位置继续...")
+			if err := dl.DownloadFromLast(ctx); err != nil {
+				return fmt.Errorf("从上次继续下载失败: %w", err)
+			}
+		}
+
+		fmt.Println("\n🎉 下载任务完成!")
+		return nil
+	}
+
+	// 非下载模式：正常的扫描流程
 	if cfg.Verbose {
 		fmt.Printf("使用配置运行 Excavator: %+v\n", cfg)
 	}
@@ -256,11 +290,12 @@ func Run() error {
 	// TODO: 与内部/核心处理器集成。下面为示例分派。
 	switch cfg.Mode {
 	case "mode1":
-		results, err := handler.RunMode1(internalCfg)
-		if err != nil {
-			return fmt.Errorf("Mode1 扫描失败: %w", err)
-		}
-		fmt.Printf("Mode1 扫描完成，共找到 %d 个漏洞条目\n", len(results))
+		fmt.Println("分派到 mode2（模糊）处理器 — 请实现调用 internal/handler")
+		//results, err := handler.RunMode1(internalCfg)
+		//if err != nil {
+		//	return fmt.Errorf("Mode1 扫描失败: %w", err)
+		//}
+		//fmt.Printf("Mode1 扫描完成，共找到 %d 个漏洞条目\n", len(results))
 	case "mode2":
 		fmt.Println("分派到 mode2（模糊）处理器 — 请实现调用 internal/handler")
 	case "mode3":
@@ -269,20 +304,10 @@ func Run() error {
 		return errors.New("unsupported mode")
 	}
 
-	// Reporter 集成点（占位）
-	//if cfg.ReportEnabled {
-	//	// 目前这里仅为占位提示 —— 实际应调用 internal/reporter 生成并保存报告。
-	//	// 示例伪代码：
-	//	// reportManager := reporter.New(cfg.ReportOut)
-	//	// meta, err := reportManager.Generate(ctx, scanResult, cfg.ReportFormats)
-	//	// if err != nil { log... }
-	//	// if cfg.ReportNotify { reportManager.Notify(meta) }
-	//	fmt.Printf("报告已启用 → 格式: %v, 输出: %s\n", cfg.ReportFormats, cfg.ReportOut)
-	//}
 	return nil
 }
 
-// 小帮助函数：PrintFatal 将错误打印到 stderr 并以非零代码退出。
+// PrintFatal 将错误打印到 stderr 并以非零代码退出。
 func PrintFatal(err error) {
 	if err == nil {
 		return

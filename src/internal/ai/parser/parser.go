@@ -1,4 +1,4 @@
-package ai
+package parser
 
 // Parser 全局占位对象
 var Parser = &aiParser{}

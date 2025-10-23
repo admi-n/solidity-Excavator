@@ -1,0 +1,46 @@
+-- 创建数据库（如果不存在）
+CREATE DATABASE IF NOT EXISTS solidity_excavator DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+
+USE solidity_excavator;
+
+-- 创建合约表
+CREATE TABLE IF NOT EXISTS contracts (
+    -- 合约地址（主键，唯一索引）
+    address VARCHAR(42) PRIMARY KEY COMMENT '合约地址',
+
+    -- 合约代码（十六进制字符串）
+    contract LONGTEXT NOT NULL COMMENT '合约字节码',
+
+    -- 合约余额（以 ETH 为单位）
+    balance VARCHAR(50) DEFAULT '0.000000' COMMENT '合约余额',
+
+    -- 是否开源（0=未开源, 1=已开源）
+    isopensource TINYINT(1) DEFAULT 0 COMMENT '是否开源',
+
+    -- 创建时间
+    createtime DATETIME NOT NULL COMMENT '合约创建时间',
+
+    -- 创建区块号
+    createblock BIGINT UNSIGNED NOT NULL COMMENT '创建区块号',
+
+    -- 最后一次交互时间
+    txlast DATETIME NOT NULL COMMENT '最后交互时间',
+
+    -- 是否已反编译（0=未反编译, 1=已反编译）
+    isdecompiled TINYINT(1) DEFAULT 0 COMMENT '是否已反编译',
+
+    -- 反编译后的伪代码
+    dedcode LONGTEXT COMMENT '反编译伪代码',
+
+    -- 索引
+    INDEX idx_createblock (createblock),
+    INDEX idx_createtime (createtime),
+    INDEX idx_isopensource (isopensource),
+    INDEX idx_isdecompiled (isdecompiled)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='智能合约信息表';
+
+-- 查看表结构
+DESCRIBE contracts;
+
+-- 查看索引
+SHOW INDEX FROM contracts;
