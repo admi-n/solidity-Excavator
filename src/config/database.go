@@ -24,6 +24,11 @@ const (
 	RPCURL = "https://rpc.ankr.com/eth/f6d5d2fe5359af3a7d15801f0ec73d5d0d997cadfb50ff072f6e18d5bbfe0103"
 )
 
+const (
+	EtherscanAPIKey  = "S287KCHRVPZ7439JNJYREKNU1Y135U2F35"
+	EtherscanBaseURL = "https://api.etherscan.io/v2"
+)
+
 // 全局连接池
 var DBPool *sql.DB
 

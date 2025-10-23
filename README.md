@@ -38,8 +38,9 @@ graph TD
 
 go run main.go -d last  下载目前区块到最新区块
 go run main.go -d -d-range 10000000-10005000  下载1000到2000区块
+go run main.go -d -file eoferror.txt
 
-//暂时先不加合约hash计算,后续反编译的时候遇到hash一样的就不需要反编译了。还有余额为0的也不反编译
+//暂时先不加合约hash计算,后续反编译的时候遇到余额为0或者hash一样的就不需要反编译了。可以省非常多功夫,百分之99.9的合约没有钱
 
 //或者后续下载完给hash一样,只保留有钱的,其他删掉,然后做个库查询那些一样就可以
 
@@ -55,15 +56,13 @@ go run main.go -ai chatgpt5 -m mode1 -s hourglass-vul -t db -t-block 1-1000 -c e
 
 使用chagpt5模型通过模式1去扫描区块1-1000部署的合约关于hourglass-vul的漏洞。(如果不开源,判断是否反编译,如果未反编译,不进行操作扫描并记录)
 
-go run main.go -ai chatgpt5 -m mode1 -s hourglass-vul t file -t-file 1.txt -t-block 1-1000 -c eth
+go run main.go -ai chatgpt5 -m mode1 -s hourglass-vul -t file -t-file 1.txt -t-block 1-1000 -c eth
+通过1.txt中的合约去匹配数据库中的合约源码,或者通过api下载源码到数据库里面。去扫描(直接通过数据库匹配吧,这样不需要管很多东西了,定期通过api下载最新的合约和代码就行了)
 
-使用chagpt5模型通过模式1去扫描文本中的合约关于hourglass-vul的漏洞的, 查找有无类似。
 
-1.txt的格式：
 
-0x
+使用chagpt5模型通过模式1去扫描文本中的合约关于hourglass-vul的漏洞的, 查找有无类似漏洞。
 
-0x
 
 通过1.txt中的合约去匹配数据库中的合约源码,或者通过api下载源码到数据库里面。去扫描(直接通过数据库匹配吧,这样不需要管很多东西了,定期通过api下载最新的合约和代码就行了)
 

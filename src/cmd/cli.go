@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"bufio"
 	"context"
 	"errors"
 	"flag"
@@ -34,6 +35,9 @@ type CLIConfig struct {
 	// 下载相关配置
 	Download      bool        // -d 启动下载流程
 	DownloadRange *BlockRange // -d-range 指定下载区块范围（格式 start-end），为空表示从上次继续下载
+	DownloadFile  string      // -file 指定包含地址的 txt 文件（每行一个地址），用于重试下载
+
+	Proxy string // 新增：HTTP 代理 (例如 http://127.0.0.1:7897)
 }
 
 // BlockRange 简单的起止区块范围结构
@@ -135,17 +139,19 @@ func ParseFlags() (*CLIConfig, error) {
 	// 新增下载相关 flags（不包含 rpc/dbdsn）
 	downloadFlag := fs.Bool("d", false, "启动区块/合约下载流程（从数据库记录的最后区块继续，或使用 -d-range 指定范围）")
 	drange := fs.String("d-range", "", "下载区块范围（format start-end），与 -d 一起使用时覆盖从上次继续的行为")
+	proxy := fs.String("proxy", "", "可选 HTTP 代理，例如 http://127.0.0.1:7897（下载/请求 Etherscan 时生效）")
 
 	ai := fs.String("ai", "", "AI provider to use (e.g. chatgpt5)")
 	mode := fs.String("m", "", "Mode to run: mode1(targeted) | mode2(fuzzy) | mode3(general)")
 	strategy := fs.String("s", "all", "Strategy/prompt name in strategy/prompts/<mode>/ (or 'all')")
 	target := fs.String("t", "db", "Target source: 'db' or 'file' (default db)")
 	blockRange := fs.String("t-block", "", "Block range for scanning (format start-end, e.g. 1-220234)")
-	tfile := fs.String("t-file", "", "YAML file path when -t=file; can be a directory for batching")
+	tfile := fs.String("-t-file", "", "YAML file path when -t=file; can be a directory for batching")
 	chain := fs.String("c", "eth", "Chain to scan: eth | bsc | arb (default eth)")
 	concurrency := fs.Int("concurrency", 4, "Worker concurrency")
 	verbose := fs.Bool("v", false, "Verbose output")
 	timeout := fs.Duration("timeout", 30*time.Second, "Per-AI request timeout")
+	fileFlag := fs.String("file", "", "当 -d 一起使用时，从指定 txt 文件读取地址逐条重新下载（每行一个地址）")
 
 	if err := fs.Parse(os.Args[1:]); err != nil {
 		return nil, err
@@ -162,6 +168,8 @@ func ParseFlags() (*CLIConfig, error) {
 		Verbose:      *verbose,
 		Timeout:      *timeout,
 		Download:     *downloadFlag,
+		Proxy:        strings.TrimSpace(*proxy),
+		DownloadFile: strings.TrimSpace(*fileFlag),
 	}
 
 	// 解析下载区块范围（如果提供）
@@ -226,9 +234,9 @@ func Run() error {
 		defer db.Close()
 		fmt.Println("✅ 数据库连接成功!")
 
-		// 创建下载器（会自动从 config.GetRPCURL() 读取 RPC URL）
-		fmt.Println("🔗 正在连接以太坊节点...")
-		dl, err := download.NewDownloader(db)
+		// 创建下载器（会自动从 config.GetRPCURL() 读取 RPC URL），传入 proxy
+		fmt.Println("🔗 正在创建下载器...")
+		dl, err := download.NewDownloader(db, cfg.Proxy)
 		if err != nil {
 			return fmt.Errorf("创建下载器失败: %w", err)
 		}
@@ -259,6 +267,43 @@ func Run() error {
 			}
 		}
 
+		// 如果用户传入 -file，则从该文件读取地址并逐条重试下载
+		if cfg.DownloadFile != "" {
+			// 读取文件中的地址（每行一个），去重并传给下载器
+			fpath := cfg.DownloadFile
+			f, err := os.Open(fpath)
+			if err != nil {
+				return fmt.Errorf("打开地址文件失败: %w", err)
+			}
+			scanner := bufio.NewScanner(f)
+			var addrs []string
+			for scanner.Scan() {
+				line := strings.TrimSpace(scanner.Text())
+				if line == "" {
+					continue
+				}
+				addrs = append(addrs, line)
+			}
+			f.Close()
+			if err := scanner.Err(); err != nil {
+				return fmt.Errorf("读取地址文件失败: %w", err)
+			}
+			if len(addrs) == 0 {
+				return fmt.Errorf("地址文件为空: %s", fpath)
+			}
+
+			// 将未下载成功的地址写入默认失败文件 eoferror.txt
+			failLog := "eoferror.txt"
+			fmt.Printf("🔁 正在根据 %s 重试 %d 个地址，失败将记录到 %s\n", fpath, len(addrs), failLog)
+			if err := dl.DownloadContractsByAddresses(ctx, addrs, failLog); err != nil {
+				return fmt.Errorf("按地址下载失败: %w", err)
+			}
+
+			fmt.Println("\n🎉 地址重试下载完成!")
+			return nil
+		}
+
+		// 否则按区块范围/从上次继续下载（原有逻辑）
 		fmt.Println("\n🎉 下载任务完成!")
 		return nil
 	}
@@ -290,7 +335,7 @@ func Run() error {
 	// TODO: 与内部/核心处理器集成。下面为示例分派。
 	switch cfg.Mode {
 	case "mode1":
-		fmt.Println("分派到 mode2（模糊）处理器 — 请实现调用 internal/handler")
+		fmt.Println("分派到 mode1）处理器 — 请实现调用 internal/handler")
 		//results, err := handler.RunMode1(internalCfg)
 		//if err != nil {
 		//	return fmt.Errorf("Mode1 扫描失败: %w", err)
