@@ -265,7 +265,7 @@ func (d *Downloader) DownloadFromLast(ctx context.Context) error {
 	// 如果没有下载记录,从创世区块开始
 	startBlock := lastBlock + 1
 	if lastBlock == 0 {
-		startBlock = 0
+		startBlock = 10000000 //默认10000000   一千万区块开始
 		log.Println("📌 数据库为空,从创世区块开始下载")
 	} else {
 		log.Printf("📌 从区块 %d 继续下载 (上次: %d)\n", startBlock, lastBlock)

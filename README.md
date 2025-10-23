@@ -4,6 +4,14 @@
 一个工具： 可以自定义编写规则扫描特定合约,包括未开源合约。未开源的反编译可以利用已有开源工具,但是时间有点久。这个后续在写
 
 
+
+
+
+
+
+
+=========note--装修中============================
+
 ```mermaid
 graph TD
     A[输入token] --> B[库中匹配合约代码]
@@ -31,11 +39,21 @@ graph TD
 go run main.go -d last  下载目前区块到最新区块
 go run main.go -d -d-range 10000000-10005000  下载1000到2000区块
 
-//暂时先不加合约hash计算,后续反编译的时候遇到hash一样的就不需要反编译了
+//暂时先不加合约hash计算,后续反编译的时候遇到hash一样的就不需要反编译了。还有余额为0的也不反编译
+
+//或者后续下载完给hash一样,只保留有钱的,其他删掉,然后做个库查询那些一样就可以
+
+
+## 命令
+
+go run main.go -ai chatgpt5 -m mode1 -s hourglass-vul -t contrant -t-address 0x -c eth
+
+使用chagpt5模型通过模式1去扫描合约，先判断是否在数据库中,如果在直接使用数据库中的代码,如果不在,下载到数据库中,再去使用
+
 
 go run main.go -ai chatgpt5 -m mode1 -s hourglass-vul -t db -t-block 1-1000 -c eth
 
-使用chagpt5模型通过模式1去扫描区块1-1000部署的合约关于hourglass-vul的漏洞。
+使用chagpt5模型通过模式1去扫描区块1-1000部署的合约关于hourglass-vul的漏洞。(如果不开源,判断是否反编译,如果未反编译,不进行操作扫描并记录)
 
 go run main.go -ai chatgpt5 -m mode1 -s hourglass-vul t file -t-file 1.txt -t-block 1-1000 -c eth
 
@@ -60,6 +78,7 @@ go run main.go -ai chatgpt5 -m mode1 -s hourglass-vul t file -t-file 1.txt -t-bl
 ## 架构
 
 ### llm
+
 AI暂时先试用API,因为本地llm效果不太好,不过不排除针对性训练的,这个后话了
 
 
