@@ -19,6 +19,7 @@ const (
 	DBName     = "solidity_excavator"
 )
 
+// 后续将ethkey和rpc全都做轮询 并且不同链不同rpc
 // RPC 配置信息 - 直接在这里修改
 const (
 	RPCURL = "https://rpc.ankr.com/eth/f6d5d2fe5359af3a7d15801f0ec73d5d0d997cadfb50ff072f6e18d5bbfe0103"
@@ -67,7 +68,7 @@ func GetContracts(ctx context.Context, db *sql.DB, limit int) ([]internal.Contra
 		return nil, fmt.Errorf("GetContracts: db is nil")
 	}
 
-	query := "SELECT address, contract, balance, isopensource, createtime, createblock, txlast, isdecompiled, dedcode FROM contracts"
+	query := "SELECT address, contract, balance, isopensource, createtime, createblock, txlast, isdecompiled, dedcode FROM contracts" //hello 这里contracts以后改成eth，方便扫其他链子
 	var rows *sql.Rows
 	var err error
 
