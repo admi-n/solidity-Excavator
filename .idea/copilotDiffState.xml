@@ -12,15 +12,6 @@
             </PendingDiffInfo>
           </value>
         </entry>
-        <entry key="$PROJECT_DIR$/src/internal/types.go">
-          <value>
-            <PendingDiffInfo>
-              <option name="filePath" value="$PROJECT_DIR$/src/internal/types.go" />
-              <option name="originalContent" value="package internal&#10;&#10;import &quot;time&quot;&#10;&#10;type ScanConfig struct {&#10;&#9;AIProvider   string&#10;&#9;Mode         string&#10;&#9;Strategy     string&#10;&#9;TargetSource string&#10;&#9;TargetFile   string&#10;&#9;Chain        string&#10;&#9;Concurrency  int&#10;&#9;Verbose      bool&#10;&#9;Timeout      time.Duration&#10;&#9;BlockRange   *BlockRange&#10;}&#10;&#10;type BlockRange struct {&#10;&#9;Start uint64&#10;&#9;End   uint64&#10;}&#10;&#10;// Contract 表示待扫描的合约基础信息，包含数据库表字段映射&#10;type Contract struct {&#10;&#9;Address      string    `json:&quot;address&quot;`      // 合约地址&#10;&#9;Code         string    `json:&quot;contract&quot;`     // 合约代码&#10;&#9;Balance      string    `json:&quot;balance&quot;`      // 余额（以字符串保存以避免精度/类型问题）&#10;&#9;IsOpenSource bool      `json:&quot;isOpenSource&quot;` // 是否开源 (true/false 对应 1/0)&#10;&#9;CreateTime   time.Time `json:&quot;createtime&quot;`   // 创建时间&#10;&#9;CreateBlock  uint64    `json:&quot;createblock&quot;`  // 创建区块号&#10;&#9;TxLast       time.Time `json:&quot;txlast&quot;`       // 最后一次交互时间&#10;&#9;IsDecompiled bool      `json:&quot;isdecompiled&quot;` //是否开源&#10;&#9;DedCode      string    `json:&quot;dedcode&quot;`      //伪代码&#10;&#10;}&#10;" />
-              <option name="updatedContent" value="package internal&#10;&#10;import &quot;time&quot;&#10;&#10;type ScanConfig struct {&#10;&#9;AIProvider    string&#10;&#9;Mode          string&#10;&#9;Strategy      string&#10;&#9;TargetSource  string&#10;&#9;TargetFile    string&#10;&#9;TargetAddress string&#10;&#9;Chain         string&#10;&#9;Concurrency   int&#10;&#9;Verbose       bool&#10;&#9;Timeout       time.Duration&#10;&#9;BlockRange    *BlockRange&#10;}&#10;&#10;type BlockRange struct {&#10;&#9;Start uint64&#10;&#9;End   uint64&#10;}&#10;&#10;// Contract 表示待扫描的合约基础信息，包含数据库表字段映射&#10;type Contract struct {&#10;&#9;Address      string    `json:&quot;address&quot;`      // 合约地址&#10;&#9;Code         string    `json:&quot;contract&quot;`     // 合约代码&#10;&#9;Balance      string    `json:&quot;balance&quot;`      // 余额（以字符串保存以避免精度/类型问题）&#10;&#9;IsOpenSource bool      `json:&quot;isOpenSource&quot;` // 是否开源 (true/false 对应 1/0)&#10;&#9;CreateTime   time.Time `json:&quot;createtime&quot;`   // 创建时间&#10;&#9;CreateBlock  uint64    `json:&quot;createblock&quot;`  // 创建区块号&#10;&#9;TxLast       time.Time `json:&quot;txlast&quot;`       // 最后一次交互时间&#10;&#9;IsDecompiled bool      `json:&quot;isdecompiled&quot;` //是否开源&#10;&#9;DedCode      string    `json:&quot;dedcode&quot;`      //伪代码&#10;&#10;}" />
-            </PendingDiffInfo>
-          </value>
-        </entry>
       </map>
     </option>
   </component>

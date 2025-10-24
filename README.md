@@ -26,11 +26,9 @@ go run main.go -d -file eoferror.txt
 
 ## 命令
 
-`go run main.go -ai chatgpt5 -m mode1 -s hourglass-vul -t contrant -t-address 0x -c eth`
-
-使用chagpt5模型通过模式1去扫描合约，先判断是否在数据库中,如果在直接使用数据库中的代码,如果不在,下载到数据库中,再去使用
-
-
+`go run main.go -ai chatgpt5 -m mode1 -s hourglass-vul -t contract -t-address 0x000 -c eth`
+0x000指的某个合约
+使用chagpt5模型通过模式1去扫描合约，先判断是否在数据库中,如果在直接使用数据库中的代码,如果不在,下载到数据库中,再去使用.
 
 `go run main.go -ai chatgpt5 -m mode1 -s hourglass-vul -t db -t-block 1-1000 -c eth`
 
@@ -38,30 +36,18 @@ go run main.go -d -file eoferror.txt
 
 `go run main.go -ai chatgpt5 -m mode1 -s hourglass-vul -t file -t-file 1.txt -c eth`
 
-通过1.txt中的合约去匹配数据库中的合约源码,或者通过api下载源码到数据库里面。去扫描(直接通过数据库匹配吧,这样不需要管很多东西了,定期通过api下载最新的合约和代码就行了)
+使用chagpt5模型通过模式1去扫描1.txt文件中的合约地址合约，先判断这些地址是否在数据库中,如果在：直接使用数据库中的代码。如果不在,将这些合约下载到数据库中,再去进行后续扫描。
 
+-s是指src/strategy/prompts/mode1/hourglass-vul.tmpl这个提示词
 
-
-使用chagpt5模型通过模式1去扫描文本中的合约关于hourglass-vul的漏洞的, 查找有无类似漏洞。
-
-
-通过1.txt中的合约去匹配数据库中的合约源码,或者通过api下载源码到数据库里面。去扫描(直接通过数据库匹配吧,这样不需要管很多东西了,定期通过api下载最新的合约和代码就行了)
-
-
-
-
------------ -ai实现
-
-[//]: # (执行go run main.go -ai xxx   先调用ai_amnager.go来判断是哪一个ai,匹配到chatgpt后, 调用chatgpt5_client.go 来启动。)
-
-[//]: # (-ai)
-
-[//]: # (ai_manager.go   -->   chatgpt5_client.go)
-
-[//]: # ()
-[//]: # (-m )
-
-[//]: # (mode1_targeted.go --> core/mode1.go)
+-ai 这里是使用的ai模型
+-m  扫描模式(比如 mode1:特定类别扫描 (mode1_targeted)：)
+-s  提示词
+-t (contract/db/file)
+    -t contract -t-address 0x000 (先判断合约地址在不在数据库中,如果不在,调用download下载这个合约到数据库中,在进行扫描)
+    -t file -t-file 1.txt (扫描1.txt文件中合约(先判断合约地址在不在数据库中,如果不在,调用download下载这个合约到数据库中,在进行扫描。))
+    -t db -t-block 1-1000 (扫描数据库中区块为1-1000的合约)
+-c (目标链：比如eth,bsc。) (目前只先测试eth)
 
 
 

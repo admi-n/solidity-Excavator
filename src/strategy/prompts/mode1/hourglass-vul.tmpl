@@ -3,6 +3,9 @@ You are an expert Solidity security auditor specializing in DeFi vulnerabilities
 **Target Contract:**
 Contract Address: {{ContractAddress}}
 
+**Reproducing the historical attack using the foundry's test simulation:**
+{{src/strategy/exp_libs/mode1/hourglass-vul.t.sol}}
+
 **Vulnerability Pattern: Hourglass Multi-Level Referral Commission Exploit**
 
 **Background:**
@@ -11,6 +14,7 @@ This vulnerability involves exploiting token distribution logic where referral b
 2. Token buy/sell operations that trigger referral rewards
 3. Flash loans to amplify the attack
 4. Strategic reinvestment patterns to maximize extracted value
+
 
 **Key Exploit Characteristics:**
 - Attacker deploys a helper contract as the referral address

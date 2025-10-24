@@ -152,7 +152,7 @@ func ParseFlags() (*CLIConfig, error) {
 	strategy := fs.String("s", "all", "Strategy/prompt name in strategy/prompts/<mode>/ (or 'all')")
 	target := fs.String("t", "db", "Target source: 'db' or 'file' (default db)")
 	blockRange := fs.String("t-block", "", "Block range for scanning (format start-end, e.g. 1-220234)")
-	tfile := fs.String("-t-file", "", "YAML file path when -t=file; can be a directory for batching")
+	tfile := fs.String("t-file", "", "YAML file path when -t=file; can be a directory for batching")
 	taddress := fs.String("t-address", "", "单个合约地址，当 -t=contract 或 -t=address 时使用")
 	chain := fs.String("c", "eth", "Chain to scan: eth | bsc | arb (default eth)")
 	concurrency := fs.Int("concurrency", 4, "Worker concurrency")
