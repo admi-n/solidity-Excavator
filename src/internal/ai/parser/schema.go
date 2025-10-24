@@ -1,4 +1,4 @@
-package parser
+package ai
 
 type ScanResult struct {
 	ContractAddress string

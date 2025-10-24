@@ -1,0 +1,16 @@
+
+
+# //hello   其他配置后续在放里面,其实也可以轮询
+
+# AI 配置
+ai:
+  # OpenAI / ChatGPT 配置
+  openai:
+    api_key: "sk-your-openai-api-key-here"
+    base_url: "https://api.openai.com/v1"  # 可选，使用第三方代理时修改
+    model: "gpt-4-turbo"  # 可选: gpt-4, gpt-4-turbo, gpt-3.5-turbo
+
+  # 本地 LLM 配置（Ollama 等）
+  local_llm:
+    base_url: "http://localhost:11434"
+    model: "llama2"  # 可选: llama2, codellama, mistral 等

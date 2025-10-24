@@ -10,28 +10,7 @@
 
 
 
-=========note--装修中============================
-
-```mermaid
-graph TD
-    A[输入token] --> B[库中匹配合约代码]
-    B --> C{是否开源}
-    C -->|不开源| D[反编译]
-    C -->|开源| E[匹配策略]
-    D --> F[匹配策略]
-    F --> G[输出可能存在漏洞的地址]
-    E --> G
-```
-
-
-
-
-数据集用数据库,方便索引。
-
-数据集格式： 
-
-格式包含信息：  合约地址     合约代码   合约余额     是否开源(0/1)      创建时间       创建区块            最后一次交互时间   是否已经反编译      反编译伪代码
-              Address    Contract   Balance    isOpenSource      Createtime   CreateBlock        txlast          isdecompiled       dedcode
+------------------------note--装修中------------------------------------
 
 
 
@@ -47,16 +26,18 @@ go run main.go -d -file eoferror.txt
 
 ## 命令
 
-go run main.go -ai chatgpt5 -m mode1 -s hourglass-vul -t contrant -t-address 0x -c eth
+`go run main.go -ai chatgpt5 -m mode1 -s hourglass-vul -t contrant -t-address 0x -c eth`
 
 使用chagpt5模型通过模式1去扫描合约，先判断是否在数据库中,如果在直接使用数据库中的代码,如果不在,下载到数据库中,再去使用
 
 
-go run main.go -ai chatgpt5 -m mode1 -s hourglass-vul -t db -t-block 1-1000 -c eth
+
+`go run main.go -ai chatgpt5 -m mode1 -s hourglass-vul -t db -t-block 1-1000 -c eth`
 
 使用chagpt5模型通过模式1去扫描区块1-1000部署的合约关于hourglass-vul的漏洞。(如果不开源,判断是否反编译,如果未反编译,不进行操作扫描并记录)
 
-go run main.go -ai chatgpt5 -m mode1 -s hourglass-vul -t file -t-file 1.txt -t-block 1-1000 -c eth
+`go run main.go -ai chatgpt5 -m mode1 -s hourglass-vul -t file -t-file 1.txt -c eth`
+
 通过1.txt中的合约去匹配数据库中的合约源码,或者通过api下载源码到数据库里面。去扫描(直接通过数据库匹配吧,这样不需要管很多东西了,定期通过api下载最新的合约和代码就行了)
 
 
@@ -69,8 +50,23 @@ go run main.go -ai chatgpt5 -m mode1 -s hourglass-vul -t file -t-file 1.txt -t-b
 
 
 
+----------- -ai实现
+
+执行go run main.go -ai xxx   先调用ai_amnager.go来判断是哪一个ai,匹配到chatgpt后, 调用chatgpt5_client.go 来启动。
+-ai
+ai_manager.go   -->   chatgpt5_client.go
+
+-m 
+mode1_targeted.go --> core/mode1.go
+
+
+
+
+
+
 ## 任务
-已经完成： cli   download 
+已经完成： cli   download  
+Todo：调用ai模块
 
 
 
