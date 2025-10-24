@@ -52,12 +52,16 @@ go run main.go -d -file eoferror.txt
 
 ----------- -ai实现
 
-执行go run main.go -ai xxx   先调用ai_amnager.go来判断是哪一个ai,匹配到chatgpt后, 调用chatgpt5_client.go 来启动。
--ai
-ai_manager.go   -->   chatgpt5_client.go
+[//]: # (执行go run main.go -ai xxx   先调用ai_amnager.go来判断是哪一个ai,匹配到chatgpt后, 调用chatgpt5_client.go 来启动。)
 
--m 
-mode1_targeted.go --> core/mode1.go
+[//]: # (-ai)
+
+[//]: # (ai_manager.go   -->   chatgpt5_client.go)
+
+[//]: # ()
+[//]: # (-m )
+
+[//]: # (mode1_targeted.go --> core/mode1.go)
 
 
 

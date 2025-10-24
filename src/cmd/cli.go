@@ -6,6 +6,7 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"github.com/admi-n/solidity-Excavator/src/internal/handler"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -21,16 +22,17 @@ import (
 
 // CLIConfig 保存解析好的 CLI 选项以及供扫描器使用的规范化字段。
 type CLIConfig struct {
-	AIProvider   string // 例如 chatgpt5
-	Mode         string // mode1 | mode2 | mode3
-	Strategy     string // 例如 hourglass-vul 或 "all"
-	TargetSource string // "db" 或 "file" - 从哪里获取目标列表
-	BlockRange   *BlockRange
-	TargetFile   string // 包含地址/批次的 YAML 路径
-	Chain        string // eth | bsc | arb
-	Concurrency  int
-	Verbose      bool
-	Timeout      time.Duration
+	AIProvider    string // 例如 chatgpt5
+	Mode          string // mode1 | mode2 | mode3
+	Strategy      string // 例如 hourglass-vul 或 "all"
+	TargetSource  string // "db" 或 "file" 或 "contract" - 从哪里获取目标列表
+	TargetFile    string // 包含地址/批次的 YAML 路径
+	TargetAddress string // 单个合约地址，当 -t=contract 时使用
+	BlockRange    *BlockRange
+	Chain         string // eth | bsc | arb
+	Concurrency   int
+	Verbose       bool
+	Timeout       time.Duration
 
 	// 下载相关配置
 	Download      bool        // -d 启动下载流程
@@ -104,11 +106,15 @@ func (c *CLIConfig) Validate() error {
 	if c.Mode != "mode1" && c.Mode != "mode2" && c.Mode != "mode3" {
 		return errors.New("-m must be one of: mode1, mode2, mode3")
 	}
-	if c.TargetSource != "db" && c.TargetSource != "file" {
-		return errors.New("-t must be either 'db' or 'file'")
+	// 允许 db | file | contract | address
+	if c.TargetSource != "db" && c.TargetSource != "file" && c.TargetSource != "contract" && c.TargetSource != "address" {
+		return errors.New("-t must be one of: db, file, contract, address")
 	}
 	if c.TargetSource == "file" && c.TargetFile == "" {
 		return errors.New("-t-file is required when -t=file")
+	}
+	if (c.TargetSource == "contract" || c.TargetSource == "address") && c.TargetAddress == "" {
+		return errors.New("-t-address is required when -t=contract or -t=address")
 	}
 	if c.Chain == "" {
 		c.Chain = "eth" // default
@@ -147,6 +153,7 @@ func ParseFlags() (*CLIConfig, error) {
 	target := fs.String("t", "db", "Target source: 'db' or 'file' (default db)")
 	blockRange := fs.String("t-block", "", "Block range for scanning (format start-end, e.g. 1-220234)")
 	tfile := fs.String("-t-file", "", "YAML file path when -t=file; can be a directory for batching")
+	taddress := fs.String("t-address", "", "单个合约地址，当 -t=contract 或 -t=address 时使用")
 	chain := fs.String("c", "eth", "Chain to scan: eth | bsc | arb (default eth)")
 	concurrency := fs.Int("concurrency", 4, "Worker concurrency")
 	verbose := fs.Bool("v", false, "Verbose output")
@@ -158,18 +165,19 @@ func ParseFlags() (*CLIConfig, error) {
 	}
 
 	cfg := &CLIConfig{
-		AIProvider:   strings.TrimSpace(*ai),
-		Mode:         strings.TrimSpace(*mode),
-		Strategy:     strings.TrimSpace(*strategy),
-		TargetSource: strings.TrimSpace(*target),
-		TargetFile:   strings.TrimSpace(*tfile),
-		Chain:        strings.TrimSpace(*chain),
-		Concurrency:  *concurrency,
-		Verbose:      *verbose,
-		Timeout:      *timeout,
-		Download:     *downloadFlag,
-		Proxy:        strings.TrimSpace(*proxy),
-		DownloadFile: strings.TrimSpace(*fileFlag),
+		AIProvider:    strings.TrimSpace(*ai),
+		Mode:          strings.TrimSpace(*mode),
+		Strategy:      strings.TrimSpace(*strategy),
+		TargetSource:  strings.TrimSpace(*target),
+		TargetFile:    strings.TrimSpace(*tfile),
+		TargetAddress: strings.TrimSpace(*taddress),
+		Chain:         strings.TrimSpace(*chain),
+		Concurrency:   *concurrency,
+		Verbose:       *verbose,
+		Timeout:       *timeout,
+		Download:      *downloadFlag,
+		Proxy:         strings.TrimSpace(*proxy),
+		DownloadFile:  strings.TrimSpace(*fileFlag),
 	}
 
 	// 解析下载区块范围（如果提供）
@@ -313,17 +321,24 @@ func Run() error {
 		fmt.Printf("使用配置运行 Excavator: %+v\n", cfg)
 	}
 
+	// 加载配置文件
+	if err := config.LoadSettings("config/settings.yaml"); err != nil {
+		fmt.Printf("⚠️  警告: 无法加载配置文件: %v\n", err)
+		fmt.Println("将尝试从环境变量读取配置...")
+	}
+
 	// 将 CLIConfig 映射到 internal.ScanConfig
 	internalCfg := internal.ScanConfig{
-		AIProvider:   cfg.AIProvider,
-		Mode:         cfg.Mode,
-		Strategy:     cfg.Strategy,
-		TargetSource: cfg.TargetSource,
-		TargetFile:   cfg.TargetFile,
-		Chain:        cfg.Chain,
-		Concurrency:  cfg.Concurrency,
-		Verbose:      cfg.Verbose,
-		Timeout:      cfg.Timeout,
+		AIProvider:    cfg.AIProvider,
+		Mode:          cfg.Mode,
+		Strategy:      cfg.Strategy,
+		TargetSource:  cfg.TargetSource,
+		TargetFile:    cfg.TargetFile,
+		TargetAddress: cfg.TargetAddress,
+		Chain:         cfg.Chain,
+		Concurrency:   cfg.Concurrency,
+		Verbose:       cfg.Verbose,
+		Timeout:       cfg.Timeout,
 	}
 	if cfg.BlockRange != nil {
 		internalCfg.BlockRange = &internal.BlockRange{
@@ -335,16 +350,17 @@ func Run() error {
 	// TODO: 与内部/核心处理器集成。下面为示例分派。
 	switch cfg.Mode {
 	case "mode1":
-		fmt.Println("分派到 mode1）处理器 — 请实现调用 internal/handler")
-		//results, err := handler.RunMode1(internalCfg)
-		//if err != nil {
-		//	return fmt.Errorf("Mode1 扫描失败: %w", err)
-		//}
-		//fmt.Printf("Mode1 扫描完成，共找到 %d 个漏洞条目\n", len(results))
+		fmt.Println("🎯 启动 Mode1（定向扫描）处理器...")
+		return handler.RunMode1Targeted(internalCfg)
+
 	case "mode2":
-		fmt.Println("分派到 mode2（模糊）处理器 — 请实现调用 internal/handler")
+		fmt.Println("🔍 启动 Mode2（模糊扫描）处理器...")
+		return fmt.Errorf("Mode2 暂未实现")
+
 	case "mode3":
-		fmt.Println("分派到 mode3（通用）处理器 — 请实现调用 internal/handler")
+		fmt.Println("🌐 启动 Mode3（通用扫描）处理器...")
+		return fmt.Errorf("Mode3 暂未实现")
+
 	default:
 		return errors.New("unsupported mode")
 	}

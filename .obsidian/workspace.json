@@ -171,6 +171,7 @@
   },
   "active": "07926cbbf211bdea",
   "lastOpenFiles": [
+    "src/config/api_keys.go",
     "src/config/api_key.go"
   ]
 }

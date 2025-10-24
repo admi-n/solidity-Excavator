@@ -34,7 +34,7 @@ type ContractInfo struct {
 
 // Downloader 下载器
 type Downloader struct {
-	client          *ethclient.Client
+	Client          *ethclient.Client
 	db              *sql.DB
 	etherscanConfig EtherscanConfig
 	rateLimiter     *RateLimiter
@@ -82,7 +82,7 @@ func NewDownloader(db *sql.DB, proxy string) (*Downloader, error) {
 	}
 
 	return &Downloader{
-		client:          client,
+		Client:          client,
 		db:              db,
 		etherscanConfig: ethersCfg,
 		rateLimiter:     NewRateLimiter(5), // 可调整速率
@@ -91,7 +91,7 @@ func NewDownloader(db *sql.DB, proxy string) (*Downloader, error) {
 
 // GetCurrentBlock 获取当前最新区块号
 func (d *Downloader) GetCurrentBlock(ctx context.Context) (uint64, error) {
-	return d.client.BlockNumber(ctx)
+	return d.Client.BlockNumber(ctx)
 }
 
 // GetLastDownloadedBlock 获取数据库中最后下载的区块号
@@ -339,7 +339,7 @@ func (d *Downloader) DownloadBlockRange(ctx context.Context, startBlock, endBloc
 			}
 
 			// 获取区块数据
-			block, err := d.client.BlockByNumber(ctx, big.NewInt(int64(blockNum)))
+			block, err := d.Client.BlockByNumber(ctx, big.NewInt(int64(blockNum)))
 			if err != nil {
 				log.Printf("❌ 获取区块 %d 失败: %v\n", blockNum, err)
 				continue
@@ -357,7 +357,7 @@ func (d *Downloader) DownloadBlockRange(ctx context.Context, startBlock, endBloc
 			for _, tx := range block.Transactions() {
 				// 合约创建交易的 To 地址为 nil
 				if tx.To() == nil {
-					receipt, err := d.client.TransactionReceipt(ctx, tx.Hash())
+					receipt, err := d.Client.TransactionReceipt(ctx, tx.Hash())
 					if err != nil {
 						log.Printf("⚠️  获取交易收据失败: %v\n", err)
 						continue
@@ -378,7 +378,7 @@ func (d *Downloader) DownloadBlockRange(ctx context.Context, startBlock, endBloc
 						}
 
 						// 获取合约字节码
-						code, err := d.client.CodeAt(ctx, receipt.ContractAddress, nil)
+						code, err := d.Client.CodeAt(ctx, receipt.ContractAddress, nil)
 						if err != nil {
 							log.Printf("⚠️  获取合约代码失败: %v\n", err)
 							continue
@@ -415,7 +415,7 @@ func (d *Downloader) DownloadBlockRange(ctx context.Context, startBlock, endBloc
 						}
 
 						// 获取合约余额
-						balance, err := d.client.BalanceAt(ctx, receipt.ContractAddress, nil)
+						balance, err := d.Client.BalanceAt(ctx, receipt.ContractAddress, nil)
 						if err != nil {
 							log.Printf("⚠️  获取余额失败: %v\n", err)
 							balance = big.NewInt(0)
@@ -510,8 +510,8 @@ func (d *Downloader) DownloadFromLast(ctx context.Context) error {
 
 // Close 关闭连接
 func (d *Downloader) Close() {
-	if d.client != nil {
-		d.client.Close()
+	if d.Client != nil {
+		d.Client.Close()
 	}
 }
 
@@ -549,7 +549,7 @@ func (d *Downloader) DownloadContractsByAddresses(ctx context.Context, addresses
 		caddr := common.HexToAddress(addr)
 
 		// 获取合约字节码
-		code, err := d.client.CodeAt(ctx, caddr, nil)
+		code, err := d.Client.CodeAt(ctx, caddr, nil)
 		if err != nil {
 			log.Printf("⚠️  获取合约字节码失败: %s -> %v\n", addr, err)
 			appendFailAddress(failLog, addr)
@@ -576,7 +576,7 @@ func (d *Downloader) DownloadContractsByAddresses(ctx context.Context, addresses
 		}
 
 		// 获取余额（不阻塞主流程，失败则置零）
-		balance, err := d.client.BalanceAt(ctx, caddr, nil)
+		balance, err := d.Client.BalanceAt(ctx, caddr, nil)
 		if err != nil {
 			log.Printf("⚠️  获取余额失败: %s -> %v\n", addr, err)
 			balance = big.NewInt(0)

@@ -3,16 +3,17 @@ package internal
 import "time"
 
 type ScanConfig struct {
-	AIProvider   string
-	Mode         string
-	Strategy     string
-	TargetSource string
-	TargetFile   string
-	Chain        string
-	Concurrency  int
-	Verbose      bool
-	Timeout      time.Duration
-	BlockRange   *BlockRange
+	AIProvider    string
+	Mode          string
+	Strategy      string
+	TargetSource  string
+	TargetFile    string
+	TargetAddress string
+	Chain         string
+	Concurrency   int
+	Verbose       bool
+	Timeout       time.Duration
+	BlockRange    *BlockRange
 }
 
 type BlockRange struct {
