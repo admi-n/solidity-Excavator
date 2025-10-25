@@ -32,6 +32,9 @@ type CLIConfig struct {
 	DownloadRange *BlockRange // -d-range 指定下载区块范围（格式 start-end），为空表示从上次继续下载
 	DownloadFile  string      // -file 指定包含地址的 txt 文件（每行一个地址），用于重试下载
 
+	// 新增：输入文件参数
+	InputFile string // -i 指定输入文件（如复现代码文件）
+
 	Proxy string // 新增：HTTP 代理 (例如 http://127.0.0.1:7897)
 }
 
@@ -250,15 +253,26 @@ func showStrategyHelp() {
 	fmt.Println("  eg: hourglass-vul")
 	fmt.Println()
 	fmt.Println("策略文件位置:")
-	fmt.Println("  strategy/prompts/mode1/<strategy>.tmpl #提示词")
-	fmt.Println("  strategy/exp_libs/mode1/<strategy>.t.sol #漏洞代码/复现")
+	fmt.Println("  strategy/prompts/mode1/default.tmpl #默认提示词模板")
+	fmt.Println("  strategy/exp_libs/mode1/<strategy>.toml #漏洞代码/复现（TOML格式）")
+	fmt.Println("  strategy/exp_libs/mode1/<strategy>.t.sol #漏洞代码/复现（SOL格式）")
+	fmt.Println("  -i <file> #指定输入文件（复现代码）")
+	fmt.Println("    支持简化路径：-i hourglassvul.toml")
+	fmt.Println("    自动在 src/strategy/exp_libs/mode1/ 目录查找")
+	fmt.Println("    支持TOML和SOL格式")
+	fmt.Println()
+	fmt.Println("模板变量:")
+	fmt.Println("  {{ContractAddress}} #目标合约地址")
+	fmt.Println("  {{ContractCode}} #目标合约代码")
+	fmt.Println("  {{InputFileContent}} #输入文件内容（-i参数）")
 	fmt.Println()
 	fmt.Println("用法:")
 	fmt.Println("  excavator -ai <provider> -m <mode> -s <strategy> [其他选项]")
 	fmt.Println()
 	fmt.Println("示例:")
 	fmt.Println("  excavator -ai chatgpt5 -m mode1 -s hourglass-vul -t contract -t-address 0x123...")
-	fmt.Println("  excavator -ai deepseek -m mode1 -s all -t db -t-block 1-1000")
+	fmt.Println("  excavator -ai deepseek -m mode1 -s hourglassvul -t contract -t-address 0x123... -i hourglassvul.toml")
+	fmt.Println("  excavator -ai deepseek -m mode1 -s all -t db -t-block 1-1000 -i my_exploit.toml")
 	fmt.Println("  excavator -ai chatgpt5 -m mode2 -s reentrancy -t file -t-file contracts.txt")
 }
 
@@ -286,6 +300,7 @@ func showTargetHelp() {
 	fmt.Println("  excavator -ai chatgpt5 -m mode1 -s hourglass-vul -t contract -t-address 0x123...")
 	fmt.Println("  excavator -ai deepseek -m mode1 -s hourglass-vul -t db -t-block 1-1000")
 	fmt.Println("  excavator -ai chatgpt5 -m mode1 -s hourglass-vul -t file -t-file contracts.txt")
+	fmt.Println("  excavator -ai deepseek -m mode1 -s hourglassvul -t contract -t-address 0x123... -i hourglass.t.sol")
 }
 
 // showChainHelp 显示区块链网络帮助
@@ -356,8 +371,9 @@ func ParseFlags() (*CLIConfig, error) {
 	chain := fs.String("c", "eth", "Chain to scan: eth | bsc | arb (default eth)")
 	concurrency := fs.Int("concurrency", 4, "Worker concurrency")
 	verbose := fs.Bool("v", false, "Verbose output")
-	timeout := fs.Duration("timeout", 30*time.Second, "Per-AI request timeout")
+	timeout := fs.Duration("timeout", 120*time.Second, "Per-AI request timeout")
 	fileFlag := fs.String("file", "", "当 -d 一起使用时，从指定 txt 文件读取地址逐条重新下载（每行一个地址）")
+	inputFile := fs.String("i", "", "指定输入文件（如复现代码文件），用于mode1扫描")
 
 	if err := fs.Parse(os.Args[1:]); err != nil {
 		return nil, err
@@ -377,6 +393,7 @@ func ParseFlags() (*CLIConfig, error) {
 		Download:      *downloadFlag,
 		Proxy:         strings.TrimSpace(*proxy),
 		DownloadFile:  strings.TrimSpace(*fileFlag),
+		InputFile:     strings.TrimSpace(*inputFile),
 	}
 
 	// 解析下载区块范围（如果提供）

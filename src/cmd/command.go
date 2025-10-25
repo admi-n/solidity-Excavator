@@ -108,7 +108,7 @@ func ExecuteDownload(cfg *CLIConfig) error {
 // ExecuteScan 执行扫描命令
 func ExecuteScan(cfg *CLIConfig) error {
 	// 加载配置文件
-	if err := config.LoadSettings("config/settings.yaml"); err != nil {
+	if err := config.LoadSettings("src/config/settings.yaml"); err != nil {
 		fmt.Printf("⚠️  警告: 无法加载配置文件: %v\n", err)
 		fmt.Println("将尝试从环境变量读取配置...")
 	}
@@ -125,6 +125,7 @@ func ExecuteScan(cfg *CLIConfig) error {
 		Concurrency:   cfg.Concurrency,
 		Verbose:       cfg.Verbose,
 		Timeout:       cfg.Timeout,
+		InputFile:     cfg.InputFile,
 		Proxy:         cfg.Proxy,
 	}
 	if cfg.BlockRange != nil {

@@ -52,6 +52,16 @@ func RunMode1Targeted(cfg internal.ScanConfig) error {
 		return fmt.Errorf("加载 prompt 模板失败: %w", err)
 	}
 
+	// 5. 加载输入文件（如果指定了-i参数）
+	var inputFileContent string
+	if cfg.InputFile != "" {
+		inputFileContent, err = prompts.LoadInputFile(cfg.InputFile)
+		if err != nil {
+			return fmt.Errorf("加载输入文件失败: %w", err)
+		}
+		fmt.Printf("📁 已加载输入文件: %s\n", cfg.InputFile)
+	}
+
 	// 5. 获取目标合约地址
 	var targetAddresses []string
 	switch strings.ToLower(cfg.TargetSource) {
@@ -130,6 +140,14 @@ func RunMode1Targeted(cfg internal.ScanConfig) error {
 					"Strategy":        cfg.Strategy,
 				})
 			}
+		} else if cfg.InputFile != "" && inputFileContent != "" {
+			// 使用输入文件内容构建prompt
+			prompt = prompts.BuildPrompt(promptTemplate, map[string]string{
+				"ContractAddress":  address,
+				"ContractCode":     contractCode,
+				"Strategy":         cfg.Strategy,
+				"InputFileContent": inputFileContent, // 使用输入文件内容替换模板中的占位符
+			})
 		} else {
 			prompt = prompts.BuildPrompt(promptTemplate, map[string]string{
 				"ContractAddress": address,
@@ -420,6 +438,35 @@ func generateTextReport(results []*ScanResult, cfg internal.ScanConfig) string {
 		sb.WriteString(fmt.Sprintf("    状态: ⚠️ 发现 %d 个漏洞\n", vulnCount))
 		if result.AnalysisResult.RiskScore > 0 {
 			sb.WriteString(fmt.Sprintf("    风险评分: %.1f/10\n", result.AnalysisResult.RiskScore))
+		}
+
+		// 显示AI分析摘要
+		if result.AnalysisResult.Summary != "" {
+			sb.WriteString("\n    AI分析摘要:\n")
+			// 按行分割摘要，每行添加适当的缩进
+			summaryLines := strings.Split(result.AnalysisResult.Summary, "\n")
+			for _, line := range summaryLines {
+				if strings.TrimSpace(line) != "" {
+					sb.WriteString(fmt.Sprintf("    %s\n", strings.TrimSpace(line)))
+				}
+			}
+		}
+
+		// 显示原始AI响应（用于调试）
+		if result.AnalysisResult.RawResponse != "" {
+			sb.WriteString("\n    AI原始响应:\n")
+			// 限制原始响应长度，避免报告过长
+			rawResponse := result.AnalysisResult.RawResponse
+			if len(rawResponse) > 1000 {
+				rawResponse = rawResponse[:1000] + "...(响应过长，已截断)"
+			}
+			// 按行分割原始响应，每行添加适当的缩进
+			responseLines := strings.Split(rawResponse, "\n")
+			for _, line := range responseLines {
+				if strings.TrimSpace(line) != "" {
+					sb.WriteString(fmt.Sprintf("    %s\n", strings.TrimSpace(line)))
+				}
+			}
 		}
 
 		sb.WriteString("\n    漏洞详情:\n")

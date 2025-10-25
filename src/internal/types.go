@@ -15,6 +15,7 @@ type ScanConfig struct {
 	Timeout       time.Duration
 	BlockRange    *BlockRange
 	ExpFile       string // EXP 文件路径
+	InputFile     string // 输入文件路径（-i参数）
 	Proxy         string // HTTP 代理
 }
 
