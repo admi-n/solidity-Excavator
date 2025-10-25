@@ -4,6 +4,7 @@
 1.txt
 .DS_Store
 ./src/config/settings.yaml
+src/config/settings.yaml
 demo_help.sh
 example_usage.sh
 AI_USAGE.md
