@@ -50,30 +50,6 @@ func LoadDefaultTemplate(mode string) (string, error) {
 	return string(content), nil
 }
 
-// LoadEXPCode 加载对应的 EXP 代码（如果存在）
-func LoadEXPCode(mode, strategy string) (string, error) {
-	// 构建 EXP 文件路径，支持从项目根目录或src目录运行
-	expPath := filepath.Join("strategy", "exp_libs", mode, strategy+".t.sol")
-
-	// 首先尝试从当前目录加载
-	if _, err := os.Stat(expPath); os.IsNotExist(err) {
-		// 如果失败，尝试从src目录加载
-		srcPath := filepath.Join("src", "strategy", "exp_libs", mode, strategy+".t.sol")
-		if _, err := os.Stat(srcPath); os.IsNotExist(err) {
-			return "", nil // EXP 不存在不算错误
-		}
-		expPath = srcPath
-	}
-
-	// 读取 EXP 代码
-	content, err := os.ReadFile(expPath)
-	if err != nil {
-		return "", fmt.Errorf("failed to load EXP code %s: %w", expPath, err)
-	}
-
-	return string(content), nil
-}
-
 // LoadInputFile 加载指定的输入文件
 func LoadInputFile(inputFile string) (string, error) {
 	if inputFile == "" {

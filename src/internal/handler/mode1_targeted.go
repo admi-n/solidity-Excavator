@@ -126,22 +126,9 @@ func RunMode1Targeted(cfg internal.ScanConfig) error {
 			continue
 		}
 
-		// 7.2 构建 prompt（使用专门的 Mode1 构建器）
+		// 7.2 构建 prompt
 		var prompt string
-		if cfg.ExpFile != "" {
-			// 尝试读取 exp 文件
-			expBs, _ := os.ReadFile(cfg.ExpFile)
-			expCode := strings.TrimSpace(string(expBs))
-			if expCode != "" {
-				prompt = prompts.BuildMode1Prompt(address, contractCode, cfg.Strategy, expCode)
-			} else {
-				prompt = prompts.BuildPrompt(promptTemplate, map[string]string{
-					"ContractAddress": address,
-					"ContractCode":    contractCode,
-					"Strategy":        cfg.Strategy,
-				})
-			}
-		} else if cfg.InputFile != "" && inputFileContent != "" {
+		if cfg.InputFile != "" && inputFileContent != "" {
 			// 使用输入文件内容构建prompt
 			prompt = prompts.BuildPrompt(promptTemplate, map[string]string{
 				"ContractAddress":  address,
