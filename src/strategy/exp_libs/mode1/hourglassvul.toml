@@ -939,7 +939,21 @@ library SafeMath {
 """
 [漏洞描述]
 code = """
+handleRef 与 purchaseTokens 的职责混淆、量纲/时点错位
 
+handleRef 在某些分支直接设置或返回 _fee（并以 magnitude 为量纲进行赋值），同时修改 _dividends。
+
+purchaseTokens 又在本函数内部依赖 _fee 与 profitPerShare_ 的关系去计算 payoutsTo_[msg.sender]（防止买家立刻拿到自己刚产生的分红）。
+
+两处在不同函数/分支对 _fee 的“设置—修正”逻辑导致在特定 referral 分支下（例如二级/三级 ref 不存在或不满足 staking 条件）计算不一致，从而写入 payoutsTo_ 的抵扣值小于应有值，攻击者因此可以买入并立刻获得不应得的可提现分红。
+
+缺乏重入/交互防护（Checks-Effects-Interactions 未严格）
+
+合约中存在对外部地址的低级 call（例如 giveEthFundAddress.call.value(...).gas(...)()）和 transfer()。更重要的是攻击复现中通过代理合约的 fallback 触发 exit()（本质是合约外部在状态更新期间或可重入路径上再次调用提款/exit），而合约没有 nonReentrant 或互斥锁来阻止在关键状态变更期间再次执行分发路径。
+
+允许将合约设为推荐人并延迟/跨 tx 的 stickyRef 逻辑
+
+stickyRef 的设置逻辑与后续判断（tokenBalanceLedger_[_referredBy] >= stakingRequirement）结合会产生某些中间状态，攻击者可以通过控制推荐人（代理合约）和转移持仓来操纵返佣发放路径。
 
 """
 

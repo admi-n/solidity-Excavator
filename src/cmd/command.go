@@ -127,6 +127,7 @@ func ExecuteScan(cfg *CLIConfig) error {
 		Timeout:       cfg.Timeout,
 		InputFile:     cfg.InputFile,
 		Proxy:         cfg.Proxy,
+		ReportDir:     cfg.ReportDir,
 	}
 	if cfg.BlockRange != nil {
 		internalCfg.BlockRange = &internal.BlockRange{

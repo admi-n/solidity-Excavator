@@ -36,6 +36,9 @@ type CLIConfig struct {
 	InputFile string // -i 指定输入文件（如复现代码文件）
 
 	Proxy string // 新增：HTTP 代理 (例如 http://127.0.0.1:7897)
+
+	// 报告相关参数
+	ReportDir string // -r 指定markdown报告输出目录，默认为reports
 }
 
 // BlockRange 简单的起止区块范围结构
@@ -155,6 +158,7 @@ func showGeneralHelp() {
 	fmt.Println("  -s <strategy>     指定扫描策略")
 	fmt.Println("  -t <target>       指定扫描目标")
 	fmt.Println("  -c <chain>        指定区块链网络")
+	fmt.Println("  -r <dir>          指定markdown报告输出目录（默认为reports）")
 	fmt.Println()
 	fmt.Println("获取特定命令的帮助:")
 	fmt.Println("  excavator -d --help     # 下载模式帮助")
@@ -165,7 +169,8 @@ func showGeneralHelp() {
 	fmt.Println("  excavator -c --help     # 区块链网络帮助")
 	fmt.Println()
 	fmt.Println("示例:")
-	fmt.Println("  excavator -ai chatgpt5 -m mode1 -s hourglass-vul -t contract -t-address 0x123... -c eth")
+	fmt.Println("  excavator -ai chatgpt5 -m mode1 -s hourglass-vul -t contract -t-address 0x123... -c eth -r ./")
+	fmt.Println("  excavator -ai deepseek -m mode1 -i hourglassvul.toml -t contract -t-address 0x123... -r reports/")
 	fmt.Println("  excavator -d -d-range 1000-2000")
 }
 
@@ -374,6 +379,7 @@ func ParseFlags() (*CLIConfig, error) {
 	timeout := fs.Duration("timeout", 120*time.Second, "Per-AI request timeout")
 	fileFlag := fs.String("file", "", "当 -d 一起使用时，从指定 txt 文件读取地址逐条重新下载（每行一个地址）")
 	inputFile := fs.String("i", "", "指定输入文件（如复现代码文件），用于mode1扫描")
+	reportDir := fs.String("r", "reports", "指定markdown报告输出目录，默认为reports")
 
 	if err := fs.Parse(os.Args[1:]); err != nil {
 		return nil, err
@@ -394,6 +400,7 @@ func ParseFlags() (*CLIConfig, error) {
 		Proxy:         strings.TrimSpace(*proxy),
 		DownloadFile:  strings.TrimSpace(*fileFlag),
 		InputFile:     strings.TrimSpace(*inputFile),
+		ReportDir:     strings.TrimSpace(*reportDir),
 	}
 
 	// 解析下载区块范围（如果提供）

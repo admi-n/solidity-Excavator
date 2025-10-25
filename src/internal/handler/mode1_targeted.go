@@ -15,6 +15,7 @@ import (
 	"github.com/admi-n/solidity-Excavator/src/internal/ai"
 	"github.com/admi-n/solidity-Excavator/src/internal/ai/parser"
 	"github.com/admi-n/solidity-Excavator/src/internal/download"
+	"github.com/admi-n/solidity-Excavator/src/internal/report"
 	"github.com/admi-n/solidity-Excavator/src/strategy/prompts"
 )
 
@@ -376,131 +377,51 @@ func countVulnerableContracts(results []*ScanResult) int {
 // generateReport 生成扫描报告并写入文件
 func generateReport(results []*ScanResult, cfg internal.ScanConfig) error {
 	fmt.Println("\n📄 生成扫描报告...")
-	// 以模式和时间生成文件名
-	reportFile := fmt.Sprintf("scan_report_%s_%d.txt", strings.ReplaceAll(cfg.Mode, " ", "_"), time.Now().Unix())
-	content := generateTextReport(results, cfg)
-	if err := writeReportToFile(reportFile, content); err != nil {
-		return err
-	}
-	fmt.Printf("✅ 报告已保存: %s\n", reportFile)
-	return nil
-}
 
-// generateTextReport 生成文本格式报告
-func generateTextReport(results []*ScanResult, cfg internal.ScanConfig) string {
-	var sb strings.Builder
+	// 创建报告实例
+	reportInstance := report.NewReport(cfg.Mode, cfg.Strategy, cfg.AIProvider)
 
-	sb.WriteString("========================================\n")
-	sb.WriteString("    Solidity Excavator 扫描报告\n")
-	sb.WriteString("========================================\n\n")
-	sb.WriteString(fmt.Sprintf("扫描模式: %s\n", cfg.Mode))
-	sb.WriteString(fmt.Sprintf("策略: %s\n", cfg.Strategy))
-	sb.WriteString(fmt.Sprintf("AI 提供商: %s\n", cfg.AIProvider))
-	sb.WriteString(fmt.Sprintf("扫描时间: %s\n\n", time.Now().Format("2006-01-02 15:04:05")))
+	// 转换扫描结果
+	for _, result := range results {
+		scanResult := report.NewScanResult(result.Address)
+		scanResult.SetStatus(fmt.Sprintf("⚠️ 发现 %d 个漏洞", len(result.AnalysisResult.Vulnerabilities)))
 
-	sb.WriteString("----------------------------------------\n")
-	sb.WriteString("扫描统计\n")
-	sb.WriteString("----------------------------------------\n")
-	sb.WriteString(fmt.Sprintf("总合约数: %d\n", len(results)))
-	sb.WriteString(fmt.Sprintf("存在漏洞: %d\n", countVulnerableContracts(results)))
-
-	// 按严重性统计
-	severityCounts := make(map[string]int)
-	for _, r := range results {
-		if r.AnalysisResult != nil {
-			for _, v := range r.AnalysisResult.Vulnerabilities {
-				severityCounts[v.Severity]++
+		if result.AnalysisResult != nil {
+			// 设置分析摘要
+			if result.AnalysisResult.Summary != "" {
+				scanResult.SetAnalysisSummary(result.AnalysisResult.Summary)
 			}
-		}
-	}
 
-	sb.WriteString("\n漏洞严重性分布:\n")
-	for _, severity := range []string{"Critical", "High", "Medium", "Low"} {
-		if count, ok := severityCounts[severity]; ok && count > 0 {
-			sb.WriteString(fmt.Sprintf("  %s: %d\n", severity, count))
-		}
-	}
+			// 设置原始响应
+			if result.AnalysisResult.RawResponse != "" {
+				scanResult.SetRawResponse(result.AnalysisResult.RawResponse)
+			}
 
-	sb.WriteString("\n========================================\n")
-	sb.WriteString("详细结果\n")
-	sb.WriteString("========================================\n\n")
-
-	for i, result := range results {
-		sb.WriteString(fmt.Sprintf("[%d] 合约地址: %s\n", i+1, result.Address))
-		sb.WriteString(fmt.Sprintf("    扫描时间: %s\n", result.Timestamp.Format("2006-01-02 15:04:05")))
-
-		if result.AnalysisResult == nil {
-			sb.WriteString("    状态: 分析失败\n\n")
-			continue
-		}
-
-		vulnCount := len(result.AnalysisResult.Vulnerabilities)
-		sb.WriteString(fmt.Sprintf("    状态: ⚠️ 发现 %d 个漏洞\n", vulnCount))
-		if result.AnalysisResult.RiskScore > 0 {
-			sb.WriteString(fmt.Sprintf("    风险评分: %.1f/10\n", result.AnalysisResult.RiskScore))
-		}
-
-		// 显示AI分析摘要
-		if result.AnalysisResult.Summary != "" {
-			sb.WriteString("\n    AI分析摘要:\n")
-			// 按行分割摘要，每行添加适当的缩进
-			summaryLines := strings.Split(result.AnalysisResult.Summary, "\n")
-			for _, line := range summaryLines {
-				if strings.TrimSpace(line) != "" {
-					sb.WriteString(fmt.Sprintf("    %s\n", strings.TrimSpace(line)))
+			// 添加漏洞
+			for _, vuln := range result.AnalysisResult.Vulnerabilities {
+				reportVuln := report.Vulnerability{
+					Type:        vuln.Type,
+					Severity:    vuln.Severity,
+					Description: vuln.Description,
 				}
+				scanResult.AddVulnerability(reportVuln)
 			}
 		}
 
-		// 显示原始AI响应（用于调试）
-		if result.AnalysisResult.RawResponse != "" {
-			sb.WriteString("\n    AI原始响应:\n")
-			// 限制原始响应长度，避免报告过长
-			rawResponse := result.AnalysisResult.RawResponse
-			if len(rawResponse) > 1000 {
-				rawResponse = rawResponse[:1000] + "...(响应过长，已截断)"
-			}
-			// 按行分割原始响应，每行添加适当的缩进
-			responseLines := strings.Split(rawResponse, "\n")
-			for _, line := range responseLines {
-				if strings.TrimSpace(line) != "" {
-					sb.WriteString(fmt.Sprintf("    %s\n", strings.TrimSpace(line)))
-				}
-			}
-		}
-
-		sb.WriteString("\n    漏洞详情:\n")
-		for j, vuln := range result.AnalysisResult.Vulnerabilities {
-			sb.WriteString(fmt.Sprintf("    %d. [%s] %s\n", j+1, vuln.Severity, vuln.Type))
-			if vuln.Description != "" {
-				sb.WriteString(fmt.Sprintf("       描述: %s\n", vuln.Description))
-			}
-			if vuln.Location != "" {
-				sb.WriteString(fmt.Sprintf("       位置: %s\n", vuln.Location))
-			}
-			if vuln.Remediation != "" {
-				sb.WriteString(fmt.Sprintf("       修复建议: %s\n", vuln.Remediation))
-			}
-			sb.WriteString("\n")
-		}
-
-		sb.WriteString("----------------------------------------\n\n")
+		reportInstance.AddScanResult(scanResult)
 	}
 
-	return sb.String()
-}
+	// 创建报告器
+	generator := report.NewMarkdownGenerator()
+	storage := report.NewFileStorage(cfg.ReportDir)
+	reporter := report.NewReporter(generator, storage)
 
-// writeReportToFile 将报告写入文件
-func writeReportToFile(filename, content string) error {
-	f, err := os.Create(filename)
+	// 生成并保存报告
+	filepath, err := reporter.GenerateAndSave(reportInstance)
 	if err != nil {
-		return fmt.Errorf("创建报告文件失败: %w", err)
+		return fmt.Errorf("生成报告失败: %w", err)
 	}
-	defer f.Close()
 
-	_, err = f.WriteString(content)
-	if err != nil {
-		return fmt.Errorf("写入报告失败: %w", err)
-	}
+	fmt.Printf("✅ 报告已保存: %s\n", filepath)
 	return nil
 }

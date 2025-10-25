@@ -119,7 +119,7 @@ func LoadInputFile(inputFile string) (string, error) {
 	}
 }
 
-// processTOMLFile 处理TOML文件，提取漏洞合约源码和复现代码
+// processTOMLFile 处理TOML文件，提取漏洞合约源码、漏洞描述和复现代码
 func processTOMLFile(content string) string {
 	var result strings.Builder
 
@@ -136,6 +136,24 @@ func processTOMLFile(content string) string {
 				vulnCode := strings.TrimSpace(content[codeStart : codeStart+codeEnd])
 				result.WriteString("==漏洞合约源码==\n")
 				result.WriteString(vulnCode)
+				result.WriteString("\n\n")
+			}
+		}
+	}
+
+	// 查找[漏洞描述]部分
+	descStart := strings.Index(content, "[漏洞描述]")
+	if descStart != -1 {
+		// 查找code = """开始位置
+		codeStart := strings.Index(content[descStart:], "code = \"\"\"")
+		if codeStart != -1 {
+			codeStart += descStart + len("code = \"\"\"")
+			// 查找结束的"""
+			codeEnd := strings.Index(content[codeStart:], "\"\"\"")
+			if codeEnd != -1 {
+				descCode := strings.TrimSpace(content[codeStart : codeStart+codeEnd])
+				result.WriteString("==漏洞描述==\n")
+				result.WriteString(descCode)
 				result.WriteString("\n\n")
 			}
 		}
@@ -169,16 +187,7 @@ func processTOMLFile(content string) string {
 
 // processMarkers 处理文件中的标记，确保格式正确
 func processMarkers(content string) string {
-	// 确保标记格式正确
-	content = strings.ReplaceAll(content, "==漏洞合约源码==", "==漏洞合约源码==")
-	content = strings.ReplaceAll(content, "==Foundry复现代码==", "==Foundry复现代码==")
-
-	// 如果文件没有标记，添加默认标记
-	if !strings.Contains(content, "==漏洞合约源码==") && !strings.Contains(content, "==Foundry复现代码==") {
-		// 这是一个没有标记的文件，直接返回
-		return content
-	}
-
+	// 对于.sol文件，直接返回原内容，不再处理旧格式的标记
 	return content
 }
 

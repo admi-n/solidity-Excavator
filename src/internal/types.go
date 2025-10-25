@@ -17,6 +17,7 @@ type ScanConfig struct {
 	ExpFile       string // EXP 文件路径
 	InputFile     string // 输入文件路径（-i参数）
 	Proxy         string // HTTP 代理
+	ReportDir     string // 报告输出目录（-r参数）
 }
 
 type BlockRange struct {
