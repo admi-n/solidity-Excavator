@@ -41,6 +41,15 @@ func NewAIClient(cfg AIClientConfig) (AIClient, error) {
 			Proxy:   cfg.Proxy,
 		})
 
+	case "deepseek":
+		return client.NewDeepSeekClient(client.DeepSeekConfig{
+			APIKey:  cfg.APIKey,
+			BaseURL: cfg.BaseURL,
+			Model:   cfg.Model,
+			Timeout: cfg.Timeout,
+			Proxy:   cfg.Proxy,
+		})
+
 	case "local-llm", "ollama":
 		return client.NewLocalLLMClient(client.LocalLLMConfig{
 			BaseURL: cfg.BaseURL,
@@ -49,7 +58,7 @@ func NewAIClient(cfg AIClientConfig) (AIClient, error) {
 		})
 
 	default:
-		return nil, fmt.Errorf("unsupported AI provider: %s (supported: chatgpt5, local-llm)", cfg.Provider)
+		return nil, fmt.Errorf("unsupported AI provider: %s (supported: chatgpt5, deepseek, local-llm)", cfg.Provider)
 	}
 }
 
@@ -59,12 +68,13 @@ func ValidateProvider(provider string) error {
 		"chatgpt5":  true,
 		"openai":    true,
 		"gpt4":      true,
+		"deepseek":  true,
 		"local-llm": true,
 		"ollama":    true,
 	}
 
 	if !validProviders[provider] {
-		return fmt.Errorf("invalid provider '%s', must be one of: chatgpt5, openai, gpt4, local-llm, ollama", provider)
+		return fmt.Errorf("invalid provider '%s', must be one of: chatgpt5, openai, gpt4, deepseek, local-llm, ollama", provider)
 	}
 
 	return nil

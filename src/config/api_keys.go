@@ -15,6 +15,12 @@ type AIConfig struct {
 		Model   string `yaml:"model"`    // 可选，默认 gpt-4-turbo
 	} `yaml:"openai"`
 
+	DeepSeek struct {
+		APIKey  string `yaml:"api_key"`
+		BaseURL string `yaml:"base_url"` // 默认 https://api.deepseek.com/v1
+		Model   string `yaml:"model"`    // 默认 deepseek-chat
+	} `yaml:"deepseek"`
+
 	LocalLLM struct {
 		BaseURL string `yaml:"base_url"` // 例如 http://localhost:11434
 		Model   string `yaml:"model"`    // 例如 llama2
@@ -103,6 +109,53 @@ func GetOpenAIModel() string {
 	}
 
 	return "gpt-4-turbo" // 默认值
+}
+
+// GetDeepSeekKey 获取 DeepSeek API Key
+func GetDeepSeekKey() (string, error) {
+	// 优先从环境变量读取
+	if key := os.Getenv("DEEPSEEK_API_KEY"); key != "" {
+		return key, nil
+	}
+
+	// 从配置文件读取
+	if globalSettings == nil {
+		if err := LoadSettings(""); err != nil {
+			return "", err
+		}
+	}
+
+	if globalSettings.AI.DeepSeek.APIKey == "" {
+		return "", fmt.Errorf("DeepSeek API key not found in config or environment variable DEEPSEEK_API_KEY")
+	}
+
+	return globalSettings.AI.DeepSeek.APIKey, nil
+}
+
+// GetDeepSeekBaseURL 获取 DeepSeek Base URL
+func GetDeepSeekBaseURL() string {
+	if globalSettings == nil {
+		LoadSettings("")
+	}
+
+	if globalSettings != nil && globalSettings.AI.DeepSeek.BaseURL != "" {
+		return globalSettings.AI.DeepSeek.BaseURL
+	}
+
+	return "https://api.deepseek.com/v1" // 默认值
+}
+
+// GetDeepSeekModel 获取 DeepSeek 模型名称
+func GetDeepSeekModel() string {
+	if globalSettings == nil {
+		LoadSettings("")
+	}
+
+	if globalSettings != nil && globalSettings.AI.DeepSeek.Model != "" {
+		return globalSettings.AI.DeepSeek.Model
+	}
+
+	return "deepseek-chat" // 默认值
 }
 
 // GetLocalLLMConfig 获取本地 LLM 配置

@@ -26,21 +26,55 @@ go run main.go -d -file eoferror.txt
 
 ## 命令
 
-`go run main.go -ai chatgpt5 -m mode1 -s hourglass-vul -t contract -t-address 0x000 -c eth`
-0x000指的某个合约
-使用chagpt5模型通过模式1去扫描合约，先判断是否在数据库中,如果在直接使用数据库中的代码,如果不在,下载到数据库中,再去使用.
+### 基本用法
 
-`go run main.go -ai chatgpt5 -m mode1 -s hourglass-vul -t db -t-block 1-1000 -c eth`
+#### 下载模式
+```bash
+# 从上次位置继续下载
+go run src/main.go -d
 
-使用chagpt5模型通过模式1去扫描区块1-1000部署的合约关于hourglass-vul的漏洞。(如果不开源,判断是否反编译,如果未反编译,不进行操作扫描并记录)
+# 下载指定区块范围
+go run src/main.go -d -d-range 1000-2000
 
-`go run main.go -ai chatgpt5 -m mode1 -s hourglass-vul -t file -t-file 1.txt -c eth`
+# 只下载文件中的合约地址（独立模式）
+go run src/main.go -d -file contracts.txt
 
-使用chagpt5模型通过模式1去扫描1.txt文件中的合约地址合约，先判断这些地址是否在数据库中,如果在：直接使用数据库中的代码。如果不在,将这些合约下载到数据库中,再去进行后续扫描。
+# 使用代理下载
+go run src/main.go -d -file contracts.txt -proxy http://127.0.0.1:7897
+```
 
--s是指src/strategy/prompts/mode1/hourglass-vul.tmpl这个提示词
+#### 扫描模式
+```bash
+# 扫描单个合约
+go run src/main.go -ai chatgpt5 -m mode1 -s hourglass-vul -t contract -t-address 0x000 -c eth
 
--ai 这里是使用的ai模型
+# 扫描数据库中的合约
+go run src/main.go -ai chatgpt5 -m mode1 -s hourglass-vul -t db -t-block 1-1000 -c eth
+
+# 扫描文件中的合约地址
+go run src/main.go -ai chatgpt5 -m mode1 -s hourglass-vul -t file -t-file 1.txt -c eth
+```
+
+### 帮助系统
+
+获取详细帮助信息：
+
+```bash
+# 通用帮助
+go run main.go --help
+
+# 特定命令帮助
+go run main.go -d --help      # 下载模式帮助
+go run main.go -ai --help     # AI提供商帮助
+go run main.go -m --help       # 扫描模式帮助
+go run main.go -s --help       # 扫描策略帮助
+go run main.go -t --help       # 扫描目标帮助
+go run main.go -c --help       # 区块链网络帮助
+```
+
+### 参数说明
+
+-ai 这里是使用的ai模型 (chatgpt5, deepseek, local-llm等)
 -m  扫描模式(比如 mode1:特定类别扫描 (mode1_targeted)：)
 -s  提示词
 -t (contract/db/file)
@@ -48,6 +82,8 @@ go run main.go -d -file eoferror.txt
     -t file -t-file 1.txt (扫描1.txt文件中合约(先判断合约地址在不在数据库中,如果不在,调用download下载这个合约到数据库中,在进行扫描。))
     -t db -t-block 1-1000 (扫描数据库中区块为1-1000的合约)
 -c (目标链：比如eth,bsc。) (目前只先测试eth)
+
+-s是指src/strategy/prompts/mode1/hourglass-vul.tmpl这个提示词
 
 
 

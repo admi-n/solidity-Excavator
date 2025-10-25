@@ -1,21 +1,14 @@
 package cmd
 
 import (
-	"bufio"
-	"context"
 	"errors"
 	"flag"
 	"fmt"
-	"github.com/admi-n/solidity-Excavator/src/internal/handler"
 	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
-
-	"github.com/admi-n/solidity-Excavator/src/config"
-	"github.com/admi-n/solidity-Excavator/src/internal"
-	"github.com/admi-n/solidity-Excavator/src/internal/download"
 )
 
 // Reporter 先不写
@@ -125,21 +118,227 @@ func (c *CLIConfig) Validate() error {
 	return nil
 }
 
+// showHelp 显示帮助信息
+func showHelp(topic string) {
+	switch topic {
+	case "d", "download":
+		showDownloadHelp()
+	case "ai":
+		showAIHelp()
+	case "m", "mode":
+		showModeHelp()
+	case "s", "strategy":
+		showStrategyHelp()
+	case "t", "target":
+		showTargetHelp()
+	case "c", "chain":
+		showChainHelp()
+	default:
+		showGeneralHelp()
+	}
+}
+
+// showGeneralHelp 显示通用帮助
+func showGeneralHelp() {
+	fmt.Println("🔍 Solidity Excavator - 智能合约安全扫描工具")
+	fmt.Println()
+	fmt.Println("用法:")
+	fmt.Println("  excavator [命令] [选项]")
+	fmt.Println()
+	fmt.Println("主要命令:")
+	fmt.Println("  -d, --download    启动合约下载模式")
+	fmt.Println("  -ai <provider>    指定AI提供商进行扫描")
+	fmt.Println("  -m <mode>         指定扫描模式")
+	fmt.Println("  -s <strategy>     指定扫描策略")
+	fmt.Println("  -t <target>       指定扫描目标")
+	fmt.Println("  -c <chain>        指定区块链网络")
+	fmt.Println()
+	fmt.Println("获取特定命令的帮助:")
+	fmt.Println("  excavator -d --help     # 下载模式帮助")
+	fmt.Println("  excavator -ai --help    # AI提供商帮助")
+	fmt.Println("  excavator -m --help     # 扫描模式帮助")
+	fmt.Println("  excavator -s --help     # 扫描策略帮助")
+	fmt.Println("  excavator -t --help     # 扫描目标帮助")
+	fmt.Println("  excavator -c --help     # 区块链网络帮助")
+	fmt.Println()
+	fmt.Println("示例:")
+	fmt.Println("  excavator -ai chatgpt5 -m mode1 -s hourglass-vul -t contract -t-address 0x123... -c eth")
+	fmt.Println("  excavator -d -d-range 1000-2000")
+}
+
+// showDownloadHelp 显示下载模式帮助
+func showDownloadHelp() {
+	fmt.Println("📥 下载模式 (-d, --download)")
+	fmt.Println()
+	fmt.Println("功能: 从区块链下载合约代码到数据库")
+	fmt.Println()
+	fmt.Println("用法:")
+	fmt.Println("  excavator -d [选项]")
+	fmt.Println()
+	fmt.Println("选项:")
+	fmt.Println("  -d-range <range>    指定下载区块范围 (格式: start-end)")
+	fmt.Println("  -file <path>        从文件读取合约地址进行下载 (独立模式)")
+	fmt.Println("  -proxy <url>        使用HTTP代理")
+	fmt.Println()
+	fmt.Println("示例:")
+	fmt.Println("  excavator -d                           # 从上次位置继续下载")
+	fmt.Println("  excavator -d -d-range 1000-2000        # 下载区块1000-2000")
+	fmt.Println("  excavator -d -file contracts.txt      # 只下载文件中的合约地址")
+	fmt.Println("  excavator -d -file failed.txt -proxy http://127.0.0.1:7897")
+}
+
+// showAIHelp 显示AI提供商帮助
+func showAIHelp() {
+	fmt.Println("🤖 AI提供商 (-ai)")
+	fmt.Println()
+	fmt.Println("功能: 指定用于合约分析的AI模型")
+	fmt.Println()
+	fmt.Println("支持的提供商:")
+	fmt.Println("  chatgpt5     OpenAI ChatGPT-5 (推荐)")
+	fmt.Println("  openai       OpenAI GPT-4")
+	fmt.Println("  gpt4         OpenAI GPT-4")
+	fmt.Println("  deepseek     DeepSeek AI")
+	fmt.Println("  local-llm    本地LLM (Ollama)")
+	fmt.Println("  ollama       本地Ollama")
+	fmt.Println()
+	fmt.Println("用法:")
+	fmt.Println("  excavator -ai <provider> [其他选项]")
+	fmt.Println()
+	fmt.Println("示例:")
+	fmt.Println("  excavator -ai chatgpt5 -m mode1 -s hourglass-vul -t contract -t-address 0x123...")
+	fmt.Println("  excavator -ai deepseek -m mode1 -s hourglass-vul -t db -t-block 1-1000")
+	fmt.Println("  excavator -ai local-llm -m mode1 -s hourglass-vul -t file -t-file contracts.txt")
+	fmt.Println()
+	fmt.Println("配置:")
+	fmt.Println("  在 config/settings.yaml 中设置API密钥")
+	fmt.Println("  或使用环境变量: OPENAI_API_KEY, DEEPSEEK_API_KEY")
+}
+
+// showModeHelp 显示扫描模式帮助
+func showModeHelp() {
+	fmt.Println("🎯 扫描模式 (-m, --mode)")
+	fmt.Println()
+	fmt.Println("功能: 指定漏洞扫描的模式")
+	fmt.Println()
+	fmt.Println("支持的模式:")
+	fmt.Println("  mode1        定向扫描 - 基于已知漏洞模式进行精确扫描")
+	fmt.Println("  mode2        模糊扫描 - 基于相似性进行模糊匹配扫描")
+	fmt.Println("  mode3        通用扫描 - 基于SWC标准进行全面扫描")
+	fmt.Println()
+	fmt.Println("模式详情:")
+	fmt.Println("  mode1: 针对特定已知漏洞，使用专门的提示词和EXP代码")
+	fmt.Println("  mode2: 基于漏洞特征描述进行相似性匹配")
+	fmt.Println("  mode3: 基于SWC和常见漏洞模式进行全面审计")
+	fmt.Println()
+	fmt.Println("用法:")
+	fmt.Println("  excavator -ai <provider> -m <mode> [其他选项]")
+	fmt.Println()
+	fmt.Println("示例:")
+	fmt.Println("  excavator -ai chatgpt5 -m mode1 -s hourglass-vul -t contract -t-address 0x123...")
+	fmt.Println("  excavator -ai deepseek -m mode2 -s reentrancy -t db -t-block 1-1000")
+	fmt.Println("  excavator -ai chatgpt5 -m mode3 -s all -t file -t-file contracts.txt")
+}
+
+// showStrategyHelp 显示扫描策略帮助
+func showStrategyHelp() {
+	fmt.Println("📋 扫描策略 (-s, --strategy)")
+	fmt.Println()
+	fmt.Println("功能: 指定具体的扫描策略和提示词")
+	fmt.Println()
+	fmt.Println("策略类型:")
+	fmt.Println("  all          使用所有可用策略")
+	fmt.Println("  eg: hourglass-vul")
+	fmt.Println()
+	fmt.Println("策略文件位置:")
+	fmt.Println("  strategy/prompts/mode1/<strategy>.tmpl #提示词")
+	fmt.Println("  strategy/exp_libs/mode1/<strategy>.t.sol #漏洞代码/复现")
+	fmt.Println()
+	fmt.Println("用法:")
+	fmt.Println("  excavator -ai <provider> -m <mode> -s <strategy> [其他选项]")
+	fmt.Println()
+	fmt.Println("示例:")
+	fmt.Println("  excavator -ai chatgpt5 -m mode1 -s hourglass-vul -t contract -t-address 0x123...")
+	fmt.Println("  excavator -ai deepseek -m mode1 -s all -t db -t-block 1-1000")
+	fmt.Println("  excavator -ai chatgpt5 -m mode2 -s reentrancy -t file -t-file contracts.txt")
+}
+
+// showTargetHelp 显示扫描目标帮助
+func showTargetHelp() {
+	fmt.Println("🎯 扫描目标 (-t, --target)")
+	fmt.Println()
+	fmt.Println("功能: 指定要扫描的合约来源")
+	fmt.Println()
+	fmt.Println("目标类型:")
+	fmt.Println("  contract     扫描单个合约")
+	fmt.Println("  address      扫描单个地址 (同contract)")
+	fmt.Println("  db           扫描数据库中的合约")
+	fmt.Println("  file         扫描文件中的合约地址")
+	fmt.Println()
+	fmt.Println("相关选项:")
+	fmt.Println("  -t-address <addr>    单个合约地址 (与-t contract/address一起使用)")
+	fmt.Println("  -t-file <path>        合约地址文件路径 (与-t file一起使用)")
+	fmt.Println("  -t-block <range>      区块范围 (与-t db一起使用)")
+	fmt.Println()
+	fmt.Println("用法:")
+	fmt.Println("  excavator -ai <provider> -m <mode> -s <strategy> -t <target> [目标选项]")
+	fmt.Println()
+	fmt.Println("示例:")
+	fmt.Println("  excavator -ai chatgpt5 -m mode1 -s hourglass-vul -t contract -t-address 0x123...")
+	fmt.Println("  excavator -ai deepseek -m mode1 -s hourglass-vul -t db -t-block 1-1000")
+	fmt.Println("  excavator -ai chatgpt5 -m mode1 -s hourglass-vul -t file -t-file contracts.txt")
+}
+
+// showChainHelp 显示区块链网络帮助
+func showChainHelp() {
+	fmt.Println("⛓️  区块链网络 (-c, --chain)")
+	fmt.Println()
+	fmt.Println("功能: 指定要扫描的区块链网络")
+	fmt.Println()
+	fmt.Println("支持的网络:")
+	fmt.Println("  eth         以太坊主网 (默认)")
+	fmt.Println("  bsc         Binance Smart Chain")
+	fmt.Println("  arb         Arbitrum")
+	fmt.Println()
+	fmt.Println("用法:")
+	fmt.Println("  excavator -ai <provider> -m <mode> -s <strategy> -t <target> -c <chain>")
+	fmt.Println()
+	fmt.Println("示例:")
+	fmt.Println("  excavator -ai chatgpt5 -m mode1 -s hourglass-vul -t contract -t-address 0x123... -c eth")
+	fmt.Println("  excavator -ai deepseek -m mode1 -s hourglass-vul -t db -t-block 1-1000 -c bsc")
+	fmt.Println("  excavator -ai chatgpt5 -m mode1 -s hourglass-vul -t file -t-file contracts.txt -c arb")
+}
+
 // ParseFlags 解析 os.Args 并返回 CLIConfig 或错误。用于从 main 调用。
 func ParseFlags() (*CLIConfig, error) {
+	// 检查是否请求帮助
+	if len(os.Args) > 1 {
+		// 处理特定命令的帮助请求 (如 -d --help, -ai --help)
+		for i := 1; i < len(os.Args)-1; i++ {
+			if os.Args[i+1] == "--help" || os.Args[i+1] == "-h" {
+				// 移除前缀的 - 或 --
+				cmd := os.Args[i]
+				if strings.HasPrefix(cmd, "--") {
+					cmd = cmd[2:]
+				} else if strings.HasPrefix(cmd, "-") {
+					cmd = cmd[1:]
+				}
+				showHelp(cmd)
+				os.Exit(0)
+			}
+		}
+
+		// 处理通用帮助请求
+		for _, arg := range os.Args[1:] {
+			if arg == "--help" || arg == "-h" {
+				showGeneralHelp()
+				os.Exit(0)
+			}
+		}
+	}
+
 	fs := flag.NewFlagSet(os.Args[0], flag.ContinueOnError)
 	fs.Usage = func() {
-		w := fs.Output()
-		fmt.Fprintln(w, "用法: excavator -ai <provider> -m <mode> [选项]")
-		fmt.Fprintln(w)
-		fmt.Fprintln(w, "选项:")
-		fs.PrintDefaults()
-		fmt.Fprintln(w)
-		fmt.Fprintln(w, "示例:")
-		fmt.Fprintln(w, "  excavator -ai chatgpt5 -m mode1 -s hourglass-vul -t file -t-file ./data/source_contracts/sample.yaml -c eth")
-		fmt.Fprintln(w, "  excavator -ai chatgpt5 -m mode1 -s all -t db -t-block 1-220234 -c eth")
-		fmt.Fprintln(w, "  excavator -d                    # 从上次继续下载")
-		fmt.Fprintln(w, "  excavator -d -d-range 1000-2000 # 下载指定区块范围")
+		showGeneralHelp()
 	}
 
 	// 新增下载相关 flags（不包含 rpc/dbdsn）
@@ -219,7 +418,6 @@ func ParseFlags() (*CLIConfig, error) {
 }
 
 // Run 是一个便利包装，解析 flags 并分派到相应处理器。
-// 用你实际的内部/核心逻辑替换占位处理调用。
 func Run() error {
 	cfg, err := ParseFlags()
 	if err != nil {
@@ -229,143 +427,7 @@ func Run() error {
 		return err
 	}
 
-	// 下载模式优先
-	if cfg.Download {
-		fmt.Println("🚀 启动合约下载器...")
-
-		// 初始化 MySQL 数据库连接（使用 config.InitDB，不需要传 DSN）
-		fmt.Println("📊 正在连接 MySQL 数据库...")
-		db, err := config.InitDB()
-		if err != nil {
-			return fmt.Errorf("初始化数据库失败: %w", err)
-		}
-		defer db.Close()
-		fmt.Println("✅ 数据库连接成功!")
-
-		// 创建下载器（会自动从 config.GetRPCURL() 读取 RPC URL），传入 proxy
-		fmt.Println("🔗 正在创建下载器...")
-		dl, err := download.NewDownloader(db, cfg.Proxy)
-		if err != nil {
-			return fmt.Errorf("创建下载器失败: %w", err)
-		}
-		defer dl.Close()
-
-		// 创建上下文（使用较长的超时时间用于下载）
-		ctx := context.Background()
-
-		fmt.Println("\n" + strings.Repeat("=", 50))
-		fmt.Println("开始同步合约数据...")
-		fmt.Println(strings.Repeat("=", 50) + "\n")
-
-		// 如果提供了下载范围，使用 DownloadBlockRange，否则使用 DownloadFromLast
-		if cfg.DownloadRange != nil {
-			start := cfg.DownloadRange.Start
-			end := cfg.DownloadRange.End
-			if end == ^uint64(0) {
-				return fmt.Errorf("下载范围的结束区块不能为空")
-			}
-			fmt.Printf("📥 下载指定区块范围: %d 到 %d\n", start, end)
-			if err := dl.DownloadBlockRange(ctx, start, end); err != nil {
-				return fmt.Errorf("下载失败: %w", err)
-			}
-		} else {
-			fmt.Println("📥 从上次下载位置继续...")
-			if err := dl.DownloadFromLast(ctx); err != nil {
-				return fmt.Errorf("从上次继续下载失败: %w", err)
-			}
-		}
-
-		// 如果用户传入 -file，则从该文件读取地址并逐条重试下载
-		if cfg.DownloadFile != "" {
-			// 读取文件中的地址（每行一个），去重并传给下载器
-			fpath := cfg.DownloadFile
-			f, err := os.Open(fpath)
-			if err != nil {
-				return fmt.Errorf("打开地址文件失败: %w", err)
-			}
-			scanner := bufio.NewScanner(f)
-			var addrs []string
-			for scanner.Scan() {
-				line := strings.TrimSpace(scanner.Text())
-				if line == "" {
-					continue
-				}
-				addrs = append(addrs, line)
-			}
-			f.Close()
-			if err := scanner.Err(); err != nil {
-				return fmt.Errorf("读取地址文件失败: %w", err)
-			}
-			if len(addrs) == 0 {
-				return fmt.Errorf("地址文件为空: %s", fpath)
-			}
-
-			// 将未下载成功的地址写入默认失败文件 eoferror.txt
-			failLog := "eoferror.txt"
-			fmt.Printf("🔁 正在根据 %s 重试 %d 个地址，失败将记录到 %s\n", fpath, len(addrs), failLog)
-			if err := dl.DownloadContractsByAddresses(ctx, addrs, failLog); err != nil {
-				return fmt.Errorf("按地址下载失败: %w", err)
-			}
-
-			fmt.Println("\n🎉 地址重试下载完成!")
-			return nil
-		}
-
-		// 否则按区块范围/从上次继续下载（原有逻辑）
-		fmt.Println("\n🎉 下载任务完成!")
-		return nil
-	}
-
-	// 非下载模式：正常的扫描流程
-	if cfg.Verbose {
-		fmt.Printf("使用配置运行 Excavator: %+v\n", cfg)
-	}
-
-	// 加载配置文件
-	if err := config.LoadSettings("config/settings.yaml"); err != nil {
-		fmt.Printf("⚠️  警告: 无法加载配置文件: %v\n", err)
-		fmt.Println("将尝试从环境变量读取配置...")
-	}
-
-	// 将 CLIConfig 映射到 internal.ScanConfig
-	internalCfg := internal.ScanConfig{
-		AIProvider:    cfg.AIProvider,
-		Mode:          cfg.Mode,
-		Strategy:      cfg.Strategy,
-		TargetSource:  cfg.TargetSource,
-		TargetFile:    cfg.TargetFile,
-		TargetAddress: cfg.TargetAddress,
-		Chain:         cfg.Chain,
-		Concurrency:   cfg.Concurrency,
-		Verbose:       cfg.Verbose,
-		Timeout:       cfg.Timeout,
-	}
-	if cfg.BlockRange != nil {
-		internalCfg.BlockRange = &internal.BlockRange{
-			Start: cfg.BlockRange.Start,
-			End:   cfg.BlockRange.End,
-		}
-	}
-
-	// TODO: 与内部/核心处理器集成。下面为示例分派。
-	switch cfg.Mode {
-	case "mode1":
-		fmt.Println("🎯 启动 Mode1（定向扫描）处理器...")
-		return handler.RunMode1Targeted(internalCfg)
-
-	case "mode2":
-		fmt.Println("🔍 启动 Mode2（模糊扫描）处理器...")
-		return fmt.Errorf("Mode2 暂未实现")
-
-	case "mode3":
-		fmt.Println("🌐 启动 Mode3（通用扫描）处理器...")
-		return fmt.Errorf("Mode3 暂未实现")
-
-	default:
-		return errors.New("unsupported mode")
-	}
-
-	return nil
+	return Execute(cfg)
 }
 
 // PrintFatal 将错误打印到 stderr 并以非零代码退出。

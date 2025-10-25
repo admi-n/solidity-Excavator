@@ -77,6 +77,15 @@ func NewManager(cfg ManagerConfig) (*Manager, error) {
 		cfg.APIKey = apiKey
 	}
 
+	// 支持 DeepSeek
+	if cfg.APIKey == "" && cfg.Provider == "deepseek" {
+		apiKey, err := config.GetDeepSeekKey()
+		if err != nil {
+			return nil, fmt.Errorf("failed to get DeepSeek API key from config: %w", err)
+		}
+		cfg.APIKey = apiKey
+	}
+
 	// 创建 AI 客户端
 	client, err := NewAIClient(AIClientConfig{
 		Provider: cfg.Provider,

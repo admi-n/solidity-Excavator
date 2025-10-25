@@ -105,7 +105,7 @@ func (c *LocalLLMClient) Analyze(ctx context.Context, prompt string) (string, er
 
 	// 检查错误
 	if apiResp.Error != "" {
-		return "", fmt.Errorf("Ollama API error: %s", apiResp.Error)
+		return "", fmt.Errorf("ollama API error: %s", apiResp.Error)
 	}
 
 	if resp.StatusCode != http.StatusOK {

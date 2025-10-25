@@ -9,6 +9,8 @@ import (
 	"net/url"
 	"strings"
 	"time"
+
+	"github.com/admi-n/solidity-Excavator/src/internal"
 )
 
 // EtherscanConfig Etherscan API 配置
@@ -67,19 +69,9 @@ func GetContractSource(address string, config EtherscanConfig) (sourceCode strin
 	finalURL := u.String()
 
 	// 准备 HTTP 客户端（超时与可选代理）
-	client := &http.Client{
-		Timeout: 20 * time.Second, // 稍微延长超时时间以减少偶发超时
-	}
-
-	if strings.TrimSpace(config.Proxy) != "" {
-		if pu, perr := url.Parse(config.Proxy); perr == nil {
-			client.Transport = &http.Transport{
-				Proxy: http.ProxyURL(pu),
-			}
-		} else {
-			// 代理解析失败直接返回错误，调用方会回退为字节码
-			return "", false, fmt.Errorf("解析 Etherscan proxy 失败: %w", perr)
-		}
+	client, err := internal.CreateProxyHTTPClient(config.Proxy, 20*time.Second)
+	if err != nil {
+		return "", false, fmt.Errorf("创建Etherscan HTTP客户端失败: %w", err)
 	}
 
 	// 重试逻辑：短暂网络错误/EOF/超时时重试

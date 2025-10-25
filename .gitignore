@@ -3,3 +3,12 @@
 .vscode
 1.txt
 .DS_Store
+./src/config/settings.yaml
+demo_help.sh
+example_usage.sh
+AI_USAGE.md
+REFAC_LOG.md
+PROXY_MANAGEMENT.md
+PROXY_REFACTOR_SUMMARY.md
+REFACTOR_SUMMARY.md
+DOWNLOAD_USAGE.md

@@ -12,8 +12,8 @@ import (
 	"github.com/admi-n/solidity-Excavator/src/internal"
 )
 
-// ChatGPT5Client 实现 OpenAI API 调用
-type ChatGPT5Client struct {
+// DeepSeekClient 实现 DeepSeek API 调用
+type DeepSeekClient struct {
 	apiKey     string
 	baseURL    string
 	model      string
@@ -21,24 +21,24 @@ type ChatGPT5Client struct {
 	timeout    time.Duration
 }
 
-// ChatGPT5Config 配置结构
-type ChatGPT5Config struct {
+// DeepSeekConfig 配置结构
+type DeepSeekConfig struct {
 	APIKey  string
-	BaseURL string // 默认 "https://api.openai.com/v1"
-	Model   string // 默认 "gpt-4" 或 "gpt-4-turbo"
+	BaseURL string // 默认 "https://api.deepseek.com/v1"
+	Model   string // 默认 "deepseek-chat"
 	Timeout time.Duration
 	Proxy   string // HTTP 代理
 }
 
-// OpenAI API 请求/响应结构
-type openAIRequest struct {
+// DeepSeek API 请求/响应结构（与 OpenAI 兼容）
+type deepSeekRequest struct {
 	Model       string    `json:"model"`
 	Messages    []Message `json:"messages"`
 	Temperature float64   `json:"temperature,omitempty"`
 	MaxTokens   int       `json:"max_tokens,omitempty"`
 }
 
-type openAIResponse struct {
+type deepSeekResponse struct {
 	ID      string    `json:"id"`
 	Object  string    `json:"object"`
 	Created int64     `json:"created"`
@@ -48,18 +48,18 @@ type openAIResponse struct {
 	Error   *APIError `json:"error,omitempty"`
 }
 
-// NewChatGPT5Client 创建新的 ChatGPT-5 客户端
-func NewChatGPT5Client(cfg ChatGPT5Config) (*ChatGPT5Client, error) {
+// NewDeepSeekClient 创建新的 DeepSeek 客户端
+func NewDeepSeekClient(cfg DeepSeekConfig) (*DeepSeekClient, error) {
 	if cfg.APIKey == "" {
 		return nil, fmt.Errorf("API key is required")
 	}
 
 	if cfg.BaseURL == "" {
-		cfg.BaseURL = "https://api.openai.com/v1"
+		cfg.BaseURL = "https://api.deepseek.com/v1"
 	}
 
 	if cfg.Model == "" {
-		cfg.Model = "gpt-4-turbo" // 默认使用 GPT-4 Turbo
+		cfg.Model = "deepseek-chat"
 	}
 
 	if cfg.Timeout == 0 {
@@ -76,7 +76,7 @@ func NewChatGPT5Client(cfg ChatGPT5Config) (*ChatGPT5Client, error) {
 		fmt.Printf("使用代理: %s\n", cfg.Proxy)
 	}
 
-	return &ChatGPT5Client{
+	return &DeepSeekClient{
 		apiKey:     cfg.APIKey,
 		baseURL:    cfg.BaseURL,
 		model:      cfg.Model,
@@ -85,10 +85,10 @@ func NewChatGPT5Client(cfg ChatGPT5Config) (*ChatGPT5Client, error) {
 	}, nil
 }
 
-// SendPrompt 发送 prompt 到 ChatGPT API 并返回响应
-func (c *ChatGPT5Client) SendPrompt(ctx context.Context, systemPrompt, userPrompt string) (string, error) {
+// SendPrompt 发送 prompt 到 DeepSeek API 并返回响应
+func (c *DeepSeekClient) SendPrompt(ctx context.Context, systemPrompt, userPrompt string) (string, error) {
 	// 构建请求
-	reqBody := openAIRequest{
+	reqBody := deepSeekRequest{
 		Model: c.model,
 		Messages: []Message{
 			{
@@ -134,14 +134,14 @@ func (c *ChatGPT5Client) SendPrompt(ctx context.Context, systemPrompt, userPromp
 	}
 
 	// 解析响应
-	var apiResp openAIResponse
+	var apiResp deepSeekResponse
 	if err := json.Unmarshal(body, &apiResp); err != nil {
 		return "", fmt.Errorf("failed to unmarshal response: %w", err)
 	}
 
 	// 检查错误
 	if apiResp.Error != nil {
-		return "", fmt.Errorf("OpenAI API error: %s (type: %s, code: %s)",
+		return "", fmt.Errorf("DeepSeek API error: %s (type: %s, code: %s)",
 			apiResp.Error.Message, apiResp.Error.Type, apiResp.Error.Code)
 	}
 
@@ -167,7 +167,7 @@ func (c *ChatGPT5Client) SendPrompt(ctx context.Context, systemPrompt, userPromp
 }
 
 // Analyze 分析合约代码（实现 AIClient 接口）
-func (c *ChatGPT5Client) Analyze(ctx context.Context, prompt string) (string, error) {
+func (c *DeepSeekClient) Analyze(ctx context.Context, prompt string) (string, error) {
 	// 为漏洞扫描设置系统 prompt
 	systemPrompt := `You are an expert smart contract security auditor specialized in finding vulnerabilities in Solidity code.
 Analyze the provided contract code carefully and identify potential security issues.
@@ -177,12 +177,12 @@ Return your analysis in a structured JSON format with clear vulnerability descri
 }
 
 // GetName 返回客户端名称
-func (c *ChatGPT5Client) GetName() string {
-	return fmt.Sprintf("ChatGPT-5 (%s)", c.model)
+func (c *DeepSeekClient) GetName() string {
+	return fmt.Sprintf("DeepSeek (%s)", c.model)
 }
 
 // Close 清理资源
-func (c *ChatGPT5Client) Close() error {
+func (c *DeepSeekClient) Close() error {
 	c.httpClient.CloseIdleConnections()
 	return nil
 }

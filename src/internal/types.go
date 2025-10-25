@@ -14,6 +14,8 @@ type ScanConfig struct {
 	Verbose       bool
 	Timeout       time.Duration
 	BlockRange    *BlockRange
+	ExpFile       string // EXP 文件路径
+	Proxy         string // HTTP 代理
 }
 
 type BlockRange struct {

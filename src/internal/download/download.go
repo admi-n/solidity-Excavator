@@ -7,14 +7,13 @@ import (
 	"fmt"
 	"log"
 	"math/big"
-	"net/http"
-	"net/url"
 	"os"
 	"sort"
 	"strings"
 	"time"
 
 	"github.com/admi-n/solidity-Excavator/src/config"
+	"github.com/admi-n/solidity-Excavator/src/internal"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/ethclient"
 )
@@ -47,16 +46,10 @@ func NewDownloader(db *sql.DB, proxy string) (*Downloader, error) {
 		return nil, fmt.Errorf("数据库连接不能为 nil")
 	}
 
-	// 如果传入 proxy，则设置全局默认 transport 的代理（影响 HTTP 客户端以及 ethclient 使用的默认 transport）
+	// 如果传入 proxy，则设置全局默认 transport 的代理
 	if strings.TrimSpace(proxy) != "" {
-		u, err := url.Parse(proxy)
-		if err != nil {
-			return nil, fmt.Errorf("解析 proxy URL 失败: %w", err)
-		}
-		// 设置全局 DefaultTransport 为带 proxy 的 Transport（保留默认超时等其他字段可以按需调整）
-		http.DefaultTransport = &http.Transport{
-			Proxy: http.ProxyURL(u),
-			// 其它字段采用零值或按需设置（可根据需要添加 TLSHandshakeTimeout 等）
+		if err := internal.SetGlobalProxy(proxy); err != nil {
+			return nil, fmt.Errorf("设置全局代理失败: %w", err)
 		}
 	}
 
